@@ -1,0 +1,17 @@
+# Environment & secrets
+.env
+
+# Python virtual environment
+.venv/
+
+# Monthly input sources (private prayer requests)
+input/
+
+# Generated & archived output
+archive/
+*.pdf
+202*.md
+
+# Python cache
+__pycache__/
+*.pyc
