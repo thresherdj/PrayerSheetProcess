@@ -25,17 +25,17 @@ into a formatted PDF ready for distribution.
    `202603_ssPrayerTime.md`).
 
 4. **Review** — Open the generated `.md` file and review/edit the content as
-   needed before generating the PDF.
+   needed.
 
 5. **Spellcheck** — Runs aspell against a custom church wordlist. Review any
    flagged words before proceeding.
 
-6. **Open in rapumamd** — Opens the dated `.md` file in `rapumamd`, the
-   system-wide Markdown-to-PDF tool, for PDF generation and preview.
+6. **Render PDF independently** — Use `rapumamd` outside this tool to render
+   the dated `.md` to PDF. The production tool does not launch rapumamd.
 
 7. **Archive** — When the month is complete, click Archive. This zips the
-   dated `.md`, `.pdf`, and all `input/` files into `archive/`, then clears
-   Production for the next month.
+   dated `.md`, `.pdf` (if present), and all `input/` files into `archive/`,
+   then clears Production for the next month.
 
 ---
 

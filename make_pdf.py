@@ -285,7 +285,7 @@ Below is the template section for one missionary or ministry, followed by all of
 
     md_out.write_text(result)
     log(f"Done: {md_out.name}")
-    log("Review the document, then run Spellcheck and Open in rapumamd.")
+    log("Review the document, then run Spellcheck. Render the PDF independently with rapumamd.")
 
 
 def run_spellcheck(code: str, log):
@@ -322,17 +322,6 @@ def run_spellcheck(code: str, log):
             log(f"  - {word}")
     else:
         log("No spelling issues found.")
-
-
-def run_open_rapumamd(code: str, log):
-    md = md_path(code)
-
-    if not md.exists():
-        log(f"File not found: {md.name}")
-        return
-
-    log(f"Opening rapumamd for {md.name}...")
-    subprocess.Popen(["rapumamd", "settings", str(md)])
 
 
 def run_archive(code: str, log, *, pdf_warning_accepted=False):
@@ -413,8 +402,6 @@ class App(tk.Tk):
                   command=self._do_prepare).pack(side="left", padx=6)
         tk.Button(btn_frame, text="Spellcheck", width=12,
                   command=self._do_spellcheck).pack(side="left", padx=6)
-        tk.Button(btn_frame, text="Open in rapumamd", width=14,
-                  command=self._do_open_rapumamd).pack(side="left", padx=6)
         tk.Button(btn_frame, text="Archive", width=12,
                   command=self._do_archive).pack(side="left", padx=6)
 
@@ -480,13 +467,6 @@ class App(tk.Tk):
         if code:
             threading.Thread(
                 target=run_spellcheck, args=(code, self._log), daemon=True
-            ).start()
-
-    def _do_open_rapumamd(self):
-        code = self._get_code()
-        if code:
-            threading.Thread(
-                target=run_open_rapumamd, args=(code, self._log), daemon=True
             ).start()
 
     def _do_archive(self):

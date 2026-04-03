@@ -3,6 +3,7 @@ PGCC
 Rhinelander
 Crandon
 Dewing
+Dewings
 Teleka
 Chippewa
 Pottawatomie
