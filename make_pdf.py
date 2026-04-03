@@ -31,7 +31,6 @@ import zipfile
 from pathlib import Path
 
 BASE = Path(__file__).parent
-CSS = BASE / "prayer_style.css"
 WORDLIST = BASE / "wordlist.txt"
 ARCHIVE_DIR = BASE / "archive"
 INPUT_DIR = BASE / "input"
@@ -103,6 +102,129 @@ def parse_date(raw: str):
     return None
 
 
+def _convert_inputs(log):
+    """Phase 1: Convert input files to .md using system convertmd command."""
+    input_files = sorted(INPUT_DIR.iterdir()) if INPUT_DIR.exists() else []
+    if not input_files:
+        log("No input files found in input/  — aborting.")
+        return None
+
+    for f in input_files:
+        if f.suffix.lower() == ".md":
+            log(f"  Already .md: {f.name}")
+            continue
+        log(f"  Converting: {f.name}")
+        result = subprocess.run(
+            ["convertmd", str(f)],
+            capture_output=True, text=True,
+        )
+        md_version = f.with_suffix(".md")
+        if result.returncode != 0 or not md_version.exists():
+            log(f"  Warning: convertmd failed for {f.name}, using fallback reader")
+        else:
+            log(f"  OK: {md_version.name}")
+
+    # Read all .md versions (or fall back to raw reader)
+    source_parts = []
+    for f in input_files:
+        md_version = f.with_suffix(".md")
+        if md_version.exists() and md_version.suffix == ".md":
+            read_path = md_version
+        elif f.suffix.lower() == ".md":
+            read_path = f
+        else:
+            # fallback
+            log(f"  Fallback read: {f.name}")
+            try:
+                content = read_input_file(f)
+            except Exception as e:
+                log(f"  Warning: could not read {f.name}: {e}")
+                content = "(unreadable)"
+            source_parts.append(f"--- {f.name} ---\n{content}")
+            continue
+        source_parts.append(f"--- {read_path.name} ---\n{read_path.read_text()}")
+
+    return "\n\n".join(source_parts)
+
+
+def _split_template(template_text):
+    """Phase 2: Split template into header, missionary sections, and footer.
+
+    Returns (header, sections, footer) where sections is a list of
+    (heading_line, section_text) tuples. Trailing HTML divs and page-break
+    markers are attached to the preceding section.
+    """
+    import re
+
+    lines = template_text.splitlines(keepends=True)
+
+    # Find all ## heading positions
+    heading_indices = [i for i, line in enumerate(lines) if re.match(r"^## ", line)]
+
+    if not heading_indices:
+        # No sections found — return everything as header
+        return template_text, [], ""
+
+    # Header: everything before the first ## heading
+    header = "".join(lines[:heading_indices[0]])
+
+    # Detect footer: the closing scripture quote block.
+    # Footer starts at the paragraph beginning with "Jesus reminds us"
+    footer_start = None
+    for i, line in enumerate(lines):
+        if line.strip().startswith("Jesus reminds us"):
+            footer_start = i
+            break
+
+    # Find sections that come AFTER the footer (like Life Source on page 3)
+    post_footer_heading_indices = []
+    pre_footer_heading_indices = []
+    if footer_start is not None:
+        for idx in heading_indices:
+            if idx > footer_start:
+                post_footer_heading_indices.append(idx)
+            else:
+                pre_footer_heading_indices.append(idx)
+    else:
+        pre_footer_heading_indices = heading_indices
+
+    # Build sections list — includes all headings (pre and post footer)
+    sections = []
+
+    all_headings = heading_indices  # process all in order
+    for pos, h_idx in enumerate(all_headings):
+        heading_line = lines[h_idx].strip()
+        if pos + 1 < len(all_headings):
+            next_h = all_headings[pos + 1]
+        else:
+            next_h = len(lines)
+
+        # Section text from heading to next heading (or end)
+        section_lines = lines[h_idx:next_h]
+        section_text = "".join(section_lines)
+
+        # Check if this section contains the footer quote — if so, split it
+        if footer_start is not None and h_idx < footer_start < next_h:
+            # Section ends at footer_start, footer is separate
+            section_text = "".join(lines[h_idx:footer_start])
+
+        sections.append((heading_line, section_text))
+
+    # Extract footer block
+    if footer_start is not None:
+        # Footer runs from footer_start to the next ## heading after it,
+        # or to end of file if no post-footer sections
+        if post_footer_heading_indices:
+            footer_end = post_footer_heading_indices[0]
+        else:
+            footer_end = len(lines)
+        footer = "".join(lines[footer_start:footer_end])
+    else:
+        footer = ""
+
+    return header, sections, footer
+
+
 def run_prepare(code: str, log):
     import anthropic
 
@@ -115,49 +237,55 @@ def run_prepare(code: str, log):
         return
 
     log("=== PREPARE DOCUMENT ===")
-    log(f"Reading template...")
-    template_text = TEMPLATE.read_text()
 
-    input_files = sorted(INPUT_DIR.iterdir()) if INPUT_DIR.exists() else []
-    if not input_files:
-        log("No input files found in input/  — aborting.")
+    # Phase 1 — Convert input files to Markdown
+    log("Phase 1: Converting input files...")
+    source_material = _convert_inputs(log)
+    if source_material is None:
         return
 
-    # Build input file block
-    input_block = ""
-    for f in input_files:
-        log(f"Reading input: {f.name}")
-        try:
-            content = read_input_file(f)
-        except Exception as e:
-            log(f"  Warning: could not read {f.name}: {e}")
-            content = "(unreadable)"
-        input_block += f"\n\n--- {f.name} ---\n{content}"
+    # Phase 2 — Split template into sections
+    log("Phase 2: Splitting template into sections...")
+    template_text = TEMPLATE.read_text()
+    header, sections, footer = _split_template(template_text)
+    log(f"  Found {len(sections)} missionary section(s)")
 
-    prompt = f"""You are preparing the monthly ssPrayerTime prayer guide for {label}.
-
-Below is the template used every month, followed by this month's input files containing prayer requests and missionary updates.
-
-Using the input content, fill in the template to produce the {label} edition. Follow the template's structure, tone, and formatting exactly. Replace placeholder content with real content from the inputs. Output only the completed Markdown document — no explanation, no commentary.
-
-=== TEMPLATE ===
-{template_text}
-
-=== INPUT FILES ==={input_block}
-"""
-
-    log("Sending to Claude...")
+    # Phase 3 — Call Claude per section
+    log("Phase 3: Filling sections via Claude...")
     client = anthropic.Anthropic()
-    message = client.messages.create(
-        model="claude-opus-4-6",
-        max_tokens=4096,
-        messages=[{"role": "user", "content": prompt}],
-    )
+    filled_sections = []
 
-    result = message.content[0].text
+    for heading, section_text in sections:
+        log(f"  Sending: {heading}")
+        prompt = f"""You are writing prayer requests for the monthly ssPrayerTime prayer guide ({label}).
+
+Below is the template section for one missionary or ministry, followed by all of this month's converted source material. Fill in ONLY the bullet points marked [CONTENT NEEDED] for this section. Use only relevant content from the source material. Match the tone and formatting of the template exactly. Output only the completed section — no explanation, no commentary.
+
+=== SECTION ===
+{section_text}
+
+=== SOURCE MATERIAL ===
+{source_material}"""
+
+        message = client.messages.create(
+            model="claude-opus-4-6",
+            max_tokens=2048,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        filled = message.content[0].text
+        filled_sections.append(filled)
+        log(f"  Section done: {heading}")
+
+    # Phase 4 — Reassemble the document
+    log("Phase 4: Reassembling document...")
+    parts = [header]
+    parts.extend(filled_sections)
+    parts.append(footer)
+    result = "\n".join(parts)
+
     md_out.write_text(result)
     log(f"Done: {md_out.name}")
-    log("Review the document, then run Spellcheck and Generate PDF.")
+    log("Review the document, then run Spellcheck and Open in rapumamd.")
 
 
 def run_spellcheck(code: str, log):
@@ -196,76 +324,52 @@ def run_spellcheck(code: str, log):
         log("No spelling issues found.")
 
 
-def run_generate_pdf(code: str, log):
-    from weasyprint import HTML, CSS as WeasyCSS
-
+def run_open_rapumamd(code: str, log):
     md = md_path(code)
-    pdf = pdf_path(code)
-    html = Path(f"/tmp/{code}_prayer_preview.html")
 
     if not md.exists():
         log(f"File not found: {md.name}")
         return
 
-    log("=== BUILDING PDF ===")
-
-    r = subprocess.run(
-        [
-            "pandoc", str(md),
-            "--standalone",
-            "--embed-resources",
-            "--css", str(CSS.resolve()),
-            "--metadata", "title=",
-            "-o", str(html),
-        ],
-        capture_output=True, text=True,
-        cwd=str(BASE)
-    )
-    if r.returncode != 0:
-        log(f"pandoc error: {r.stderr.strip()}")
-        return
-
-    log("Converting to PDF via WeasyPrint...")
-    try:
-        HTML(filename=str(html)).write_pdf(
-            str(pdf),
-            stylesheets=[WeasyCSS(filename=str(CSS.resolve()))]
-        )
-        log(f"Done: {pdf.name}")
-        subprocess.Popen(["xdg-open", str(pdf)])
-    except Exception as e:
-        log(f"PDF generation failed: {e}")
+    log(f"Opening rapumamd for {md.name}...")
+    subprocess.Popen(["rapumamd", "settings", str(md)])
 
 
-def run_archive(code: str, log):
+def run_archive(code: str, log, *, pdf_warning_accepted=False):
     md = md_path(code)
     pdf = pdf_path(code)
     zip_path = ARCHIVE_DIR / f"{code}_ssPrayerTime.zip"
 
     log("=== ARCHIVE ===")
 
-    missing = [f.name for f in [md, pdf] if not f.exists()]
-    if missing:
-        log(f"Cannot archive — missing: {', '.join(missing)}")
+    if not md.exists():
+        log(f"Cannot archive — missing: {md.name}")
         return
+
+    if not pdf.exists() and not pdf_warning_accepted:
+        log(f"Warning: {pdf.name} not found — archive will not include a PDF.")
+        log("Proceeding without PDF...")
 
     input_files = sorted(INPUT_DIR.iterdir()) if INPUT_DIR.exists() else []
 
     log("Building zip:")
     log(f"  {md.name}")
-    log(f"  {pdf.name}")
+    if pdf.exists():
+        log(f"  {pdf.name}")
     for f in input_files:
         log(f"  input/{f.name}")
 
     ARCHIVE_DIR.mkdir(exist_ok=True)
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
         zf.write(md, md.name)
-        zf.write(pdf, pdf.name)
+        if pdf.exists():
+            zf.write(pdf, pdf.name)
         for f in input_files:
             zf.write(f, f"input/{f.name}")
 
     md.unlink()
-    pdf.unlink()
+    if pdf.exists():
+        pdf.unlink()
     for f in input_files:
         f.unlink()
 
@@ -309,8 +413,8 @@ class App(tk.Tk):
                   command=self._do_prepare).pack(side="left", padx=6)
         tk.Button(btn_frame, text="Spellcheck", width=12,
                   command=self._do_spellcheck).pack(side="left", padx=6)
-        tk.Button(btn_frame, text="Generate PDF", width=12,
-                  command=self._do_generate_pdf).pack(side="left", padx=6)
+        tk.Button(btn_frame, text="Open in rapumamd", width=14,
+                  command=self._do_open_rapumamd).pack(side="left", padx=6)
         tk.Button(btn_frame, text="Archive", width=12,
                   command=self._do_archive).pack(side="left", padx=6)
 
@@ -323,10 +427,13 @@ class App(tk.Tk):
         )
         self._output.grid(row=4, column=0, columnspan=2, padx=12, pady=(0, 12))
 
-        # ── Clear button ──────────────────────────────────────────────────────
-        tk.Button(self, text="Clear output",
-                  command=self._clear_output).grid(
-            row=5, column=0, columnspan=2, pady=(0, 12))
+        # ── Bottom buttons ────────────────────────────────────────────────────
+        bottom = tk.Frame(self)
+        bottom.grid(row=5, column=0, columnspan=2, pady=(0, 12))
+        tk.Button(bottom, text="Clear output",
+                  command=self._clear_output).pack(side="left", padx=6)
+        tk.Button(bottom, text="Close",
+                  command=self.destroy).pack(side="left", padx=6)
 
     # ── Output helpers ────────────────────────────────────────────────────────
 
@@ -375,11 +482,11 @@ class App(tk.Tk):
                 target=run_spellcheck, args=(code, self._log), daemon=True
             ).start()
 
-    def _do_generate_pdf(self):
+    def _do_open_rapumamd(self):
         code = self._get_code()
         if code:
             threading.Thread(
-                target=run_generate_pdf, args=(code, self._log), daemon=True
+                target=run_open_rapumamd, args=(code, self._log), daemon=True
             ).start()
 
     def _do_archive(self):
@@ -392,8 +499,11 @@ class App(tk.Tk):
         input_files = sorted(INPUT_DIR.iterdir()) if INPUT_DIR.exists() else []
 
         lines = ["The following will be zipped and removed:\n"]
-        for f in [md, pdf]:
-            lines.append(f"  \u2022 {f.name}")
+        lines.append(f"  \u2022 {md.name}")
+        if pdf.exists():
+            lines.append(f"  \u2022 {pdf.name}")
+        else:
+            lines.append(f"  \u2022 {pdf.name} (NOT FOUND — will archive without PDF)")
         for f in input_files:
             lines.append(f"  \u2022 input/{f.name}")
         lines.append(f"\nZip: archive/{code}_ssPrayerTime.zip")

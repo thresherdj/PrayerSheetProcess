@@ -6,7 +6,7 @@ Pine Grove Community Church supports several missionaries financially and in pra
 Christ's Great Commission (Matthew 28:18-20). We ask God to provide for their needs, keep them
 safe, and grant success in sharing the Gospel. Each month, the Mission Team reviews their
 newsletters and contacts them to learn current prayer needs. Below are the latest requests for
-March. Please pray for these missionaries throughout the month.
+this month. Please pray for these missionaries throughout the month.
 
 <div style="margin-top: 24pt;"></div>
 

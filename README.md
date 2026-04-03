@@ -16,9 +16,13 @@ into a formatted PDF ready for distribution.
 
 2. **Run the GUI** — Launch `make_pdf.py`, enter the month in `YYYY/MM` format.
 
-3. **Prepare Document** — Click this button to send the template and input
-   files to Claude AI. Claude reads all the source material and writes a
-   month-specific `.md` file (e.g., `202603_ssPrayerTime.md`).
+3. **Prepare Document** — Click this button to process the month's inputs.
+   First, all input files are converted to Markdown via `convertmd`. Then the
+   template is split into individual missionary sections, and each section is
+   sent to Claude AI separately with the converted source material. Claude
+   fills in only the `[CONTENT NEEDED]` placeholders for that section. The
+   filled sections are reassembled into the dated `.md` file (e.g.,
+   `202603_ssPrayerTime.md`).
 
 4. **Review** — Open the generated `.md` file and review/edit the content as
    needed before generating the PDF.
@@ -26,8 +30,8 @@ into a formatted PDF ready for distribution.
 5. **Spellcheck** — Runs aspell against a custom church wordlist. Review any
    flagged words before proceeding.
 
-6. **Generate PDF** — Converts the `.md` to a formatted PDF. The PDF opens
-   automatically when done.
+6. **Open in rapumamd** — Opens the dated `.md` file in `rapumamd`, the
+   system-wide Markdown-to-PDF tool, for PDF generation and preview.
 
 7. **Archive** — When the month is complete, click Archive. This zips the
    dated `.md`, `.pdf`, and all `input/` files into `archive/`, then clears
@@ -78,9 +82,11 @@ Install via your package manager (`apt`, etc.):
 |---------|---------|
 | `python3` | Runs the GUI script |
 | `python3-tk` | tkinter GUI framework (usually included with python3) |
-| `pandoc` | Converts Markdown to HTML |
+| `pandoc` | Used by spellcheck to extract plain text |
 | `aspell` | Spellchecker |
 | `aspell-en` | English dictionary for aspell |
+| `convertmd` | Converts input files (.docx, .eml, etc.) to Markdown |
+| `rapumamd` | Markdown-to-PDF renderer (replaces weasyprint) |
 
 ### Python Packages
 Installed in `.venv/` — no system-wide installation needed:
@@ -88,13 +94,12 @@ Installed in `.venv/` — no system-wide installation needed:
 | Package | Purpose |
 |---------|---------|
 | `anthropic` | Claude AI API client (Prepare Document) |
-| `python-docx` | Reads `.docx` input files |
-| `weasyprint` | Converts HTML to PDF (CSS print support) |
+| `python-docx` | Reads `.docx` input files (fallback if convertmd fails) |
 
 Install all Python packages:
 ```bash
 python3 -m venv .venv
-.venv/bin/pip install anthropic python-docx weasyprint
+.venv/bin/pip install anthropic python-docx
 ```
 
 ### API Key
