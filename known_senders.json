@@ -1,0 +1,98 @@
+{
+  "midwest indian mission": {
+    "org": "MidwestIndianMission",
+    "sender": "DewingDon"
+  },
+  "dewing": {
+    "org": "MidwestIndianMission",
+    "sender": "DewingDon"
+  },
+  "don": {
+    "org": "MidwestIndianMission",
+    "sender": "DewingDon"
+  },
+  "teleka": {
+    "org": "MidwestIndianMission",
+    "sender": "DewingDon"
+  },
+  "crandon": {
+    "org": "MidwestIndianMission",
+    "sender": "DewingDon"
+  },
+  "living stones international": {
+    "org": "LivingStonesInternational",
+    "sender": "PatDr"
+  },
+  "living stones": {
+    "org": "LivingStonesInternational",
+    "sender": "PatDr"
+  },
+  "dr pat": {
+    "org": "LivingStonesInternational",
+    "sender": "PatDr"
+  },
+  "lsi": {
+    "org": "LivingStonesInternational",
+    "sender": "PatDr"
+  },
+  "fort wilderness": {
+    "org": "FortWilderness",
+    "sender": "StaffPGCC"
+  },
+  "operation christmas child": {
+    "org": "OperationChristmasChild",
+    "sender": "SamaritansPurse"
+  },
+  "occ": {
+    "org": "OperationChristmasChild",
+    "sender": "SamaritansPurse"
+  },
+  "shoebox": {
+    "org": "OperationChristmasChild",
+    "sender": "SamaritansPurse"
+  },
+  "samaritan's purse": {
+    "org": "OperationChristmasChild",
+    "sender": "SamaritansPurse"
+  },
+  "rock international": {
+    "org": "RockInternational",
+    "sender": "SchermerDennis"
+  },
+  "harvest productions": {
+    "org": "RockInternational",
+    "sender": "SchermerDennis"
+  },
+  "dennis schermer": {
+    "org": "RockInternational",
+    "sender": "SchermerDennis"
+  },
+  "linda schermer": {
+    "org": "RockInternational",
+    "sender": "SchermerDennis"
+  },
+  "wild": {
+    "org": "Wild",
+    "sender": "MetrasChris"
+  },
+  "wise intentional leadership": {
+    "org": "Wild",
+    "sender": "MetrasChris"
+  },
+  "abigail giles": {
+    "org": "FortWilderness",
+    "sender": "GilesAbigail"
+  },
+  "richie giles": {
+    "org": "FortWilderness",
+    "sender": "GilesRichie"
+  },
+  "life source": {
+    "org": "LifeSource",
+    "sender": "LifeSource"
+  },
+  "lifesource": {
+    "org": "LifeSource",
+    "sender": "LifeSource"
+  }
+}

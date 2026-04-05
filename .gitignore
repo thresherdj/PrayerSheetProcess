@@ -15,3 +15,6 @@ archive/
 # Python cache
 __pycache__/
 *.pyc
+
+# LaTeX temp files
+missfont.log

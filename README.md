@@ -14,7 +14,7 @@ into a formatted PDF ready for distribution.
 1. **Collect input files** — Drop the month's source documents (emails, Word
    files, etc.) into the `input/` folder.
 
-2. **Run the GUI** — Launch `make_pdf.py`, enter the month in `YYYY/MM` format.
+2. **Run the GUI** — Launch `prayer_sheet.py`, enter the month in `YYYY/MM` format.
 
 3. **Prepare Document** — Click this button to process the month's inputs.
    First, all input files are converted to Markdown via `convertmd`. Then the
@@ -43,12 +43,18 @@ into a formatted PDF ready for distribution.
 
 ```
 Production/
+├── prayer_sheet.py              # GUI entry point
+├── macros.py                    # Project-local RapumaMD macros
 ├── template_ssPrayerTime.md     # Master template — edit to change layout/structure
-├── make_pdf.py                  # GUI production script
-├── prayer_style.css             # Print stylesheet (margins, fonts, QR layout)
+├── known_senders.json           # Pattern → org/sender lookup for file rename
 ├── wordlist.txt                 # Custom aspell dictionary (church names, etc.)
 ├── .env                         # Anthropic API key (never share or commit)
 ├── .venv/                       # Python virtual environment
+├── lib/
+│   ├── convert.py               # Step 2: convertmd conversion + rename
+│   ├── prepare.py               # Step 3: template split + Claude API calls
+│   ├── spellcheck.py            # Step 5: aspell via pandoc
+│   └── archive.py               # Step 7: zip and cleanup
 ├── QR_Codes/                    # QR code images (1" square, float right in PDF)
 ├── input/                       # Monthly source files — cleared on archive
 └── archive/                     # Zipped monthly archives
@@ -94,12 +100,11 @@ Installed in `.venv/` — no system-wide installation needed:
 | Package | Purpose |
 |---------|---------|
 | `anthropic` | Claude AI API client (Prepare Document) |
-| `python-docx` | Reads `.docx` input files (fallback if convertmd fails) |
 
 Install all Python packages:
 ```bash
 python3 -m venv .venv
-.venv/bin/pip install anthropic python-docx
+.venv/bin/pip install anthropic
 ```
 
 ### API Key
@@ -118,15 +123,16 @@ chat or commit it to version control.
 
 ## Template Editing Notes
 
-- **QR codes** are referenced by `<img>` tags in the template. They float
-  to the right of each section's description at 1" square.
-- **Page breaks** can be inserted anywhere with:
-  ```html
-  <div style="page-break-after: always;"></div>
-  ```
-- **Extra spacing** between elements:
-  ```html
-  <div style="margin-top: 16pt;"></div>
-  ```
-- After editing the template, always re-run **Prepare Document** to regenerate
-  the dated `.md` — existing dated files do not update automatically.
+The template uses RapumaMD macros (defined in `macros.py`, expanded at render time):
+
+- `@missionary(Name, Organization)` — section heading
+- `@prayer(label)` — prayer request bullet; an optional label appears bold before an em dash, with the prayer text following on the same line. `[CONTENT NEEDED]` after the macro is what Claude fills. Examples: `@prayer(Topic) [CONTENT NEEDED]`, `@prayer() [CONTENT NEEDED]`
+- `@hrule(1pt)` — horizontal rule between sections
+- `@title(text)` — styled title block
+- `@today()` — current date
+
+**QR codes** are referenced by `<img>` tags with `class="qr-code"` — they float
+right at 1" square.
+
+After editing the template, always re-run **Prepare Document** to regenerate
+the dated `.md` — existing dated files do not update automatically.

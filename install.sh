@@ -79,8 +79,8 @@ fi
 
 echo "  Installing Python packages..."
 .venv/bin/pip install --quiet --upgrade pip
-.venv/bin/pip install --quiet anthropic python-docx
-echo "  anthropic, python-docx — OK"
+.venv/bin/pip install --quiet anthropic
+echo "  anthropic — OK"
 
 # ── Anthropic API key ──────────────────────────────────────────────────────────
 
@@ -114,5 +114,5 @@ echo
 echo "=== Installation complete ==="
 echo
 echo "To launch the app:"
-echo "  python3 make_pdf.py"
+echo "  python3 prayer_sheet.py"
 echo
