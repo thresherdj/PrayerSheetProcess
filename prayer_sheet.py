@@ -33,9 +33,10 @@ from lib.prepare import run_prepare
 from lib.spellcheck import run_spellcheck
 from lib.archive import run_archive
 
-BASE = Path(__file__).parent
-INPUT_DIR = BASE / "input"
-ENV_FILE = BASE / ".env"
+APP_DIR = Path(__file__).parent
+WORK_DIR = Path.cwd()
+INPUT_DIR = WORK_DIR / "input"
+ENV_FILE = APP_DIR / ".env"
 
 
 # ── Environment ───────────────────────────────────────────────────────────────
@@ -53,11 +54,11 @@ def load_env():
 # ── Path helpers ─────────────────────────────────────────────────────────────
 
 def md_path(code: str) -> Path:
-    return BASE / f"{code}_ssPrayerTime.md"
+    return WORK_DIR / f"{code}_ssPrayerTime.md"
 
 
 def pdf_path(code: str) -> Path:
-    return BASE / f"{code}_ssPrayerTime.pdf"
+    return WORK_DIR / f"{code}_ssPrayerTime.pdf"
 
 
 def parse_date(raw: str):
@@ -103,16 +104,16 @@ class App(tk.Tk):
         btn_frame = tk.Frame(self)
         btn_frame.grid(row=2, column=0, columnspan=2, pady=8)
 
-        tk.Button(btn_frame, text="Convert Input Files", width=18,
+        tk.Button(btn_frame, text="1. Convert Input", width=16,
                   command=self._do_convert).pack(side="left", padx=6)
-        tk.Button(btn_frame, text="Prepare Document", width=16,
+        tk.Button(btn_frame, text="2. Prepare Document", width=18,
                   bg="#4a90d9", fg="white", font=("Helvetica", 10, "bold"),
                   command=self._do_prepare).pack(side="left", padx=6)
-        tk.Button(btn_frame, text="Spellcheck", width=12,
+        tk.Button(btn_frame, text="3. Spellcheck", width=13,
                   command=self._do_spellcheck).pack(side="left", padx=6)
-        tk.Button(btn_frame, text="Open in rapumamd", width=18,
+        tk.Button(btn_frame, text="4. Review / PDF", width=15,
                   command=self._do_open_rapumamd).pack(side="left", padx=6)
-        tk.Button(btn_frame, text="Archive", width=12,
+        tk.Button(btn_frame, text="5. Archive", width=11,
                   command=self._do_archive).pack(side="left", padx=6)
 
         # ── Error indicator ───────────────────────────────────────────────────
@@ -187,7 +188,7 @@ class App(tk.Tk):
 
         def _run():
             self._log("__CLEAR_ERROR__")
-            had_errors = run_convert(code, self._log)
+            had_errors = run_convert(code, self._log, WORK_DIR)
             if had_errors:
                 self._log("__ERROR_FLAG__")
 
@@ -197,14 +198,14 @@ class App(tk.Tk):
         code = self._get_code()
         if code:
             threading.Thread(
-                target=run_prepare, args=(code, self._log), daemon=True
+                target=run_prepare, args=(code, self._log, WORK_DIR), daemon=True
             ).start()
 
     def _do_spellcheck(self):
         code = self._get_code()
         if code:
             threading.Thread(
-                target=run_spellcheck, args=(code, self._log), daemon=True
+                target=run_spellcheck, args=(code, self._log, WORK_DIR), daemon=True
             ).start()
 
     def _do_open_rapumamd(self):
@@ -240,7 +241,7 @@ class App(tk.Tk):
 
         if messagebox.askyesno("Confirm Archive", "\n".join(lines)):
             threading.Thread(
-                target=run_archive, args=(code, self._log), daemon=True
+                target=run_archive, args=(code, self._log, WORK_DIR), daemon=True
             ).start()
         else:
             self._log("Archive cancelled.")

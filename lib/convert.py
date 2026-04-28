@@ -7,19 +7,16 @@ import subprocess
 from datetime import datetime
 from pathlib import Path
 
-BASE = Path(__file__).resolve().parent.parent
-INPUT_DIR = BASE / "input"
-ORG_DIR = INPUT_DIR / "Org"
-ERROR_LOG = INPUT_DIR / "error.log"
-KNOWN_SENDERS = BASE / "known_senders.json"
+APP_DIR = Path(__file__).resolve().parent.parent
+KNOWN_SENDERS = APP_DIR / "known_senders.json"
 
 
 # ── Error logging ────────────────────────────────────────────────────────────
 
-def _log_error(filename, message):
+def _log_error(filename, message, error_log):
     """Append a timestamped error to input/error.log."""
     ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    with open(ERROR_LOG, "a") as f:
+    with open(error_log, "a") as f:
         f.write(f"[{ts}] {filename}: {message}\n")
 
 
@@ -101,30 +98,34 @@ Content:
 
 # ── Main entry point ─────────────────────────────────────────────────────────
 
-def run_convert(code, log):
+def run_convert(code, log, work_dir: Path):
     """Run the full conversion pipeline: convertmd + rename.
 
     Returns True if there were errors, False if clean.
     """
+    input_dir = work_dir / "input"
+    org_dir = input_dir / "Org"
+    error_log = input_dir / "error.log"
+
     had_errors = False
 
     log("=== CONVERT INPUT FILES ===")
 
-    if not INPUT_DIR.exists():
+    if not input_dir.exists():
         log("No input/ directory found — aborting.")
         return True
 
     # Clear error.log for this run
-    if ERROR_LOG.exists():
-        ERROR_LOG.unlink()
+    if error_log.exists():
+        error_log.unlink()
 
-    ORG_DIR.mkdir(exist_ok=True)
+    org_dir.mkdir(exist_ok=True)
 
     # ── 2a: convertmd conversion ─────────────────────────────────────────
     log("Phase 1: Converting files to Markdown...")
 
     input_files = sorted(
-        f for f in INPUT_DIR.iterdir()
+        f for f in input_dir.iterdir()
         if f.is_file() and f.name != "error.log"
     )
 
@@ -147,11 +148,11 @@ def run_convert(code, log):
         if result.returncode != 0 or not md_version.exists():
             err_detail = result.stderr.strip() or "convertmd returned non-zero"
             log(f"  FAILED: {f.name} — {err_detail}")
-            _log_error(f.name, f"convertmd failed: {err_detail}")
+            _log_error(f.name, f"convertmd failed: {err_detail}", error_log)
             had_errors = True
         else:
             # Move original to Org/
-            dest = ORG_DIR / f.name
+            dest = org_dir / f.name
             shutil.move(str(f), str(dest))
             log(f"  OK: {md_version.name} (original → Org/)")
 
@@ -165,7 +166,7 @@ def run_convert(code, log):
         log("  Warning: known_senders.json not found — using Claude only")
 
     md_files = sorted(
-        f for f in INPUT_DIR.iterdir()
+        f for f in input_dir.iterdir()
         if f.is_file() and f.suffix.lower() == ".md" and f.name != "error.log"
     )
 
@@ -179,7 +180,7 @@ def run_convert(code, log):
             content = f.read_text(errors="replace")
         except Exception as e:
             log(f"  FAILED read: {f.name} — {e}")
-            _log_error(f.name, f"Could not read for rename: {e}")
+            _log_error(f.name, f"Could not read for rename: {e}", error_log)
             had_errors = True
             continue
 
@@ -196,25 +197,25 @@ def run_convert(code, log):
 
         if not org:
             log(f"  FAILED rename: {f.name} — could not determine organization")
-            _log_error(f.name, "Rename failed: could not determine organization name")
+            _log_error(f.name, "Rename failed: could not determine organization name", error_log)
             had_errors = True
             continue
 
         if not sender:
             log(f"  FAILED rename: {f.name} — could not determine sender")
-            _log_error(f.name, "Rename failed: could not determine sender identity")
+            _log_error(f.name, "Rename failed: could not determine sender identity", error_log)
             had_errors = True
             continue
 
         new_name = f"{org}_{sender}_{code}.md"
-        new_path = INPUT_DIR / new_name
+        new_path = input_dir / new_name
 
         # If the name is taken, append _2, _3, etc.
         if new_path.exists() and new_path != f:
             n = 2
             while True:
                 new_name = f"{org}_{sender}_{code}_{n}.md"
-                new_path = INPUT_DIR / new_name
+                new_path = input_dir / new_name
                 if not new_path.exists() or new_path == f:
                     break
                 n += 1

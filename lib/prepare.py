@@ -3,9 +3,8 @@
 import re
 from pathlib import Path
 
-BASE = Path(__file__).resolve().parent.parent
-TEMPLATE = BASE / "template_ssPrayerTime.md"
-INPUT_DIR = BASE / "input"
+APP_DIR = Path(__file__).resolve().parent.parent
+TEMPLATE = APP_DIR / "template_ssPrayerTime.md"
 
 
 def _split_template(template_text):
@@ -182,14 +181,11 @@ def _match_files_to_sections(sections, md_files, log):
 
 # ── Main entry point ─────────────────────────────────────────────────────────
 
-def md_path(code: str) -> Path:
-    return BASE / f"{code}_ssPrayerTime.md"
-
-
-def run_prepare(code: str, log):
+def run_prepare(code: str, log, work_dir: Path):
     import anthropic
 
-    md_out = md_path(code)
+    md_out = work_dir / f"{code}_ssPrayerTime.md"
+    input_dir = work_dir / "input"
     year, month = code[:4], code[4:]
     label = f"{year}/{month}"
 
@@ -202,9 +198,9 @@ def run_prepare(code: str, log):
     # Phase 1 — Read converted .md files from input/
     log("Reading input files...")
     md_files = sorted(
-        f for f in INPUT_DIR.iterdir()
+        f for f in input_dir.iterdir()
         if f.is_file() and f.suffix.lower() == ".md" and f.name != "error.log"
-    ) if INPUT_DIR.exists() else []
+    ) if input_dir.exists() else []
 
     if not md_files:
         log("No .md files found in input/ — run Convert Input Files first.")
@@ -271,4 +267,4 @@ Below is the template section for one missionary or ministry, followed by all of
 
     md_out.write_text(result)
     log(f"Done: {md_out.name}")
-    log("Review the document, then run Spellcheck. Render the PDF independently with rapumamd.")
+    log(f"Next: open and edit {md_out.name} in a text editor, then click 3. Spellcheck.")

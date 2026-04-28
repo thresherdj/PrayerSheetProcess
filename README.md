@@ -1,5 +1,23 @@
 # ssPrayerTime Production System
 
+## Monthly Quickstart
+
+```
+Working folder: ~/Documents/PGCC/Missions/MonthlyPrayerSheet/
+```
+
+1. Drop this month's source files (emails, Word docs, etc.) into `input/`
+2. Open a terminal in the working folder and run `./run`
+3. Confirm the month is correct (defaults to current month), then click the buttons left to right:
+   - **1. Convert Input** — converts files to Markdown and renames them
+   - **2. Prepare Document** — calls Claude to fill the template (takes a minute or two)
+   - Open the generated `YYYYMM_ssPrayerTime.md` in a text editor and review/edit
+   - **3. Spellcheck** — flags anything aspell catches
+   - **4. Review / PDF** — opens rapumamd to render and review the PDF
+   - **5. Archive** — zips everything into `archive/` and clears for next month
+
+---
+
 ## Overview
 
 This system produces the monthly **ssPrayerTime** prayer sheet for Pine Grove

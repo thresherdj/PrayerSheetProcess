@@ -3,16 +3,12 @@
 import subprocess
 from pathlib import Path
 
-BASE = Path(__file__).resolve().parent.parent
-WORDLIST = BASE / "wordlist.txt"
+APP_DIR = Path(__file__).resolve().parent.parent
+WORDLIST = APP_DIR / "wordlist.txt"
 
 
-def md_path(code: str) -> Path:
-    return BASE / f"{code}_ssPrayerTime.md"
-
-
-def run_spellcheck(code: str, log):
-    md = md_path(code)
+def run_spellcheck(code: str, log, work_dir: Path):
+    md = work_dir / f"{code}_ssPrayerTime.md"
     if not md.exists():
         log(f"File not found: {md.name}")
         return
