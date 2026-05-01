@@ -1,4 +1,7 @@
-"""Project-local macros for TestMDs documents."""
+"""Project-local macros for the ssPrayerTime template."""
+
+
+_section_qr_stack = []
 
 
 def _escape(text: str) -> str:
@@ -16,6 +19,50 @@ def missionary(*args) -> str:
     if org:
         return f"\\subsection*{{{name} — {org}}}"
     return f"\\subsection*{{{name}}}"
+
+
+def missionary_section(*args) -> str:
+    """@missionary_section(name, organization, qr_path) — open a two-column
+    section with the body text on the left and the QR code on the right.
+    Must be paired with @end_missionary_section() at the end of the section.
+    qr_path is optional; if omitted the section runs full width.
+
+    Layout: text in a fixed-width left minipage, QR in a fixed-width right
+    minipage. Every line in the section has the same width — no wrapfigure
+    flow inconsistency.
+    """
+    name = _escape(args[0]) if args else "Name"
+    org = _escape(args[1]) if len(args) > 1 else ""
+    qr = args[2].strip() if len(args) > 2 else ""
+    _section_qr_stack.append(qr)
+    heading = f"{name} — {org}" if org else name
+
+    if not qr:
+        return f"\n\n\\subsection*{{{heading}}}\n\n"
+
+    return (
+        "\n\n```{=latex}\n"
+        "\\noindent\\begin{minipage}[t]{0.78\\textwidth}\n"
+        f"\\subsection*{{{heading}}}\n"
+        "```\n\n"
+    )
+
+
+def end_missionary_section(*args) -> str:
+    """@end_missionary_section() — close a section opened by @missionary_section()."""
+    qr = _section_qr_stack.pop() if _section_qr_stack else ""
+    if not qr:
+        return "\n\n"
+
+    return (
+        "\n\n```{=latex}\n"
+        "\\end{minipage}\\hfill"
+        "\\begin{minipage}[t]{0.20\\textwidth}\n"
+        "\\vspace{0pt}\n"
+        f"\\includegraphics[width=1in]{{{qr}}}\n"
+        "\\end{minipage}\n"
+        "```\n\n"
+    )
 
 def prayer(*args) -> str:
     """@prayer(label) — start a prayer request bullet point.

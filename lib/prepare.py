@@ -10,17 +10,20 @@ TEMPLATE = APP_DIR / "template_ssPrayerTime.md"
 def _split_template(template_text):
     """Split template into header, missionary sections, and footer.
 
-    Returns (header, sections, footer) where sections is a list of
-    (heading_line, section_text) tuples.
+    Returns (header, sections, footer, num_pre_footer_sections) where
+    sections is a list of (heading_line, section_text) tuples and
+    num_pre_footer_sections is how many of those appear before the footer
+    in source order. The caller reassembles as:
+        header + sections[:num_pre] + footer + sections[num_pre:]
 
-    Sections are delimited by @missionary() macro lines. Post-footer
+    Sections are delimited by @missionary_section() macro lines. Post-footer
     sections (e.g. Life Source) use @title() as the section delimiter.
     """
     lines = template_text.splitlines(keepends=True)
 
-    # Find all @missionary(...) section positions
+    # Find all @missionary_section(...) section positions
     heading_indices = [
-        i for i, line in enumerate(lines) if re.match(r"^@missionary\(", line)
+        i for i, line in enumerate(lines) if re.match(r"^@missionary_section\(", line)
     ]
 
     # Detect footer: the closing scripture quote block.
@@ -40,7 +43,7 @@ def _split_template(template_text):
 
     if not heading_indices:
         # No sections found — return everything as header
-        return template_text, [], ""
+        return template_text, [], "", 0
 
     # Header: everything before the first @missionary()
     header = "".join(lines[:heading_indices[0]])
@@ -81,7 +84,8 @@ def _split_template(template_text):
     else:
         footer = ""
 
-    return header, sections, footer
+    num_pre_footer = len(heading_indices) - len(post_footer_heading_indices)
+    return header, sections, footer, num_pre_footer
 
 
 # ── Section matching (3a) ────────────────────────────────────────────────────
@@ -142,8 +146,8 @@ def _match_files_to_sections(sections, md_files, log):
     # Build normalized section tokens
     section_tokens = {}
     for heading, _ in sections:
-        # Extract arguments from @missionary(name, org) or @title(text)
-        m = re.match(r'^@(?:missionary|title)\((.+)\)\s*$', heading)
+        # Extract arguments from @missionary_section(name, org, qr) or @title(text)
+        m = re.match(r'^@(?:missionary_section|title)\((.+)\)\s*$', heading)
         raw = m.group(1) if m else heading
         section_tokens[heading] = _normalize(raw)
 
@@ -212,7 +216,7 @@ def run_prepare(code: str, log, work_dir: Path):
     # Phase 2 — Split template into sections
     log("Splitting template into sections...")
     template_text = TEMPLATE.read_text()
-    header, sections, footer = _split_template(template_text)
+    header, sections, footer, num_pre_footer = _split_template(template_text)
     log(f"  Found {len(sections)} section(s)")
 
     # Phase 3 — Match input files to sections
@@ -241,7 +245,7 @@ def run_prepare(code: str, log, work_dir: Path):
         log(f"  Sending: {heading}")
         prompt = f"""You are writing prayer requests for the monthly ssPrayerTime prayer guide ({label}).
 
-Below is the template section for one missionary or ministry, followed by all of this month's converted source material for that section. Distill clear and concise prayer requests from the source material. Each @prayer() line has [CONTENT NEEDED] after the macro call on the same line — fill in ONLY those placeholders with concise prayer text. Labeled lines look like "@prayer(Topic Name) [CONTENT NEEDED]" — keep the label, replace only [CONTENT NEEDED]. Unlabeled lines look like "@prayer() [CONTENT NEEDED]". Preserve all @prayer() macro calls exactly as written — only replace the [CONTENT NEEDED] text that follows them. Preserve all other macros (@missionary, @hrule, @title) and HTML tags exactly as they appear. Output only the completed section — no explanation, no commentary.
+Below is the template section for one missionary or ministry, followed by all of this month's converted source material for that section. Distill clear and concise prayer requests from the source material. Each @prayer() line has [CONTENT NEEDED] after the macro call on the same line — fill in ONLY those placeholders with concise prayer text. Labeled lines look like "@prayer(Topic Name) [CONTENT NEEDED]" — keep the label, replace only [CONTENT NEEDED]. Unlabeled lines look like "@prayer() [CONTENT NEEDED]". Preserve all @prayer() macro calls exactly as written — only replace the [CONTENT NEEDED] text that follows them. Preserve all other macros (@missionary_section, @end_missionary_section, @hrule, @title, @framedbox, @endframedbox) and any HTML tags exactly as they appear. Keep block-level macros like @framedbox/@endframedbox on their own lines with blank lines around them — do not jam them inline with surrounding text. Output only the completed section — no explanation, no commentary.
 
 === SECTION ===
 {section_text}
@@ -258,11 +262,14 @@ Below is the template section for one missionary or ministry, followed by all of
         filled_sections.append(filled)
         log(f"  Section done: {heading}")
 
-    # Phase 5 — Reassemble the document
+    # Phase 5 — Reassemble the document in source order:
+    # header + pre-footer sections + footer + post-footer sections
     log("Reassembling document...")
     parts = [header]
-    parts.extend(filled_sections)
-    parts.append(footer)
+    parts.extend(filled_sections[:num_pre_footer])
+    if footer:
+        parts.append(footer)
+    parts.extend(filled_sections[num_pre_footer:])
     result = "\n".join(parts)
 
     md_out.write_text(result)

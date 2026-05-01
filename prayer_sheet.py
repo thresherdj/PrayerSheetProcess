@@ -132,6 +132,13 @@ class App(tk.Tk):
             font=("Courier", 10), wrap="word"
         )
         self._output.grid(row=5, column=0, columnspan=2, padx=12, pady=(0, 12))
+        self._output.tag_configure(
+            "instruct",
+            font=("Courier", 10, "bold"),
+            foreground="#1a5f1a",
+            spacing1=8, spacing3=4,
+            lmargin1=4, lmargin2=4,
+        )
 
         # ── Bottom buttons ────────────────────────────────────────────────────
         bottom = tk.Frame(self)
@@ -158,7 +165,11 @@ class App(tk.Tk):
                     self._error_var.set("")
                     continue
                 self._output.configure(state="normal")
-                self._output.insert("end", msg + "\n")
+                tag = "instruct" if msg.lstrip().startswith("Next:") else None
+                if tag:
+                    self._output.insert("end", msg + "\n", tag)
+                else:
+                    self._output.insert("end", msg + "\n")
                 self._output.see("end")
                 self._output.configure(state="disabled")
         except queue.Empty:
@@ -217,7 +228,32 @@ class App(tk.Tk):
             self._log(f"File not found: {md.name} — run Prepare Document first.")
             return
         self._log(f"Opening rapumamd for {md.name}...")
-        subprocess.Popen(["rapumamd", str(md)])
+
+        def launch():
+            try:
+                proc = subprocess.run(
+                    ["rapumamd", "render", str(md)],
+                    capture_output=True,
+                    text=True,
+                )
+            except FileNotFoundError:
+                self._log("Error: 'rapumamd' command not found on PATH. Install it with `pipx install -e ~/MakerSpace/CodingProjects/RapumaMD`.")
+                return
+            except Exception as e:
+                self._log(f"Error launching rapumamd: {e}")
+                return
+
+            if proc.returncode != 0:
+                err = (proc.stderr or proc.stdout or "(no output)").strip()
+                self._log(f"rapumamd failed (exit {proc.returncode}):\n{err}")
+                return
+
+            out = (proc.stdout or "").strip()
+            if out:
+                self._log(out)
+            self._log("rapumamd render complete.")
+
+        threading.Thread(target=launch, daemon=True).start()
 
     def _do_archive(self):
         code = self._get_code()

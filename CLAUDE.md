@@ -46,9 +46,9 @@ All long-running work runs in daemon threads to keep the GUI responsive. Thread-
 
 **Step 3 — Prepare Document (`lib/prepare.py`):**
 1. Reads `.md` files from `input/` and matches them to template sections by normalized organization name.
-2. `_split_template()` — parses `template_ssPrayerTime.md` into `(header, sections, footer)`. Sections delimited by `## ` headings. Footer identified by line starting with `"Jesus reminds us"`.
+2. `_split_template()` — parses `template_ssPrayerTime.md` into `(header, sections, footer, num_pre_footer)`. Sections delimited by `@missionary_section(...)` lines. Footer identified by line starting with `"Jesus reminds us"`. Post-footer sections (e.g. Life Source) use `@title()` as the section delimiter. `num_pre_footer` says how many of the returned sections appear before the footer in source order, so the reassembler can put the footer between them and the post-footer sections instead of dumping it at the very end.
 3. `run_prepare()` — one `claude-opus-4-6` API call per section with section text + only the matched source material. Sequential, not parallel. Sections with no matching input retain `[CONTENT NEEDED]` placeholder.
-4. Reassembles and writes `{YYYYMM}_ssPrayerTime.md`.
+4. Reassembles in source order: `header + filled_sections[:num_pre_footer] + footer + filled_sections[num_pre_footer:]`. Writes `{YYYYMM}_ssPrayerTime.md`.
 
 **Other buttons:**
 - **Open in rapumamd** — launches `rapumamd` on the dated `.md` for iterative review (Step 4) and final PDF generation (Step 6).
@@ -59,18 +59,18 @@ All long-running work runs in daemon threads to keep the GUI responsive. Thread-
 
 The template uses RapumaMD macros (expanded at render time via `macros.py`):
 
-- `@missionary(Name, Organization)` — section heading for each missionary entry.
+- `@missionary_section(Name, Organization, qr_path)` / `@end_missionary_section()` — open/close a two-column section. Heading + body + bullets sit in a fixed-width left minipage; the QR code sits in a fixed-width right minipage. Every line in the section has uniform width — no wrapfigure flow inconsistency. `qr_path` is optional; if omitted the section runs full width.
+- `@missionary(Name, Organization)` — legacy section heading (just emits a `\subsection*`); kept for backwards compatibility.
 - `@prayer(label)` — a prayer request bullet. The optional label appears bold before an em dash; prayer text (or `[CONTENT NEEDED]`) follows on the same line after the macro call. e.g. `@prayer(Topic Name) [CONTENT NEEDED]` or `@prayer() [CONTENT NEEDED]`.
 - `@hrule(1pt)` — horizontal rule between sections.
 - `@title(text)` — styled title block (document title and post-footer sections like Life Source).
 - `@today()` — current date (used in frontmatter and title).
 
-Sections are delimited by `@missionary()` lines. The footer begins at the line starting with `"Jesus reminds us"`. Post-footer sections (e.g., Life Source on page 3) use `@title()` as the delimiter and are handled correctly.
+Sections are delimited by `@missionary_section(...)` lines. The footer begins at the line starting with `"Jesus reminds us"`. Post-footer sections (e.g., Life Source on page 3) use `@title()` as the delimiter and are handled correctly.
 
-QR codes float right via the `qr-code` CSS class:
-```html
-<img src="QR_Codes/SomeOrg.png" class="qr-code" alt="Org Name">
-```
+The two-column layout works by emitting pandoc raw-LaTeX fences (` ```{=latex} ` ... ` ``` `) around `\begin{minipage}` / `\end{minipage}` tags. This is required because pandoc treats raw `\begin{...}...\end{...}` blocks in markdown as opaque LaTeX and does not process bullets/paragraphs inside; the fence form keeps the LaTeX scaffolding raw while letting the body content between fences be processed as markdown.
+
+The `@missionary_section` / `@end_missionary_section` pair shares state through a module-level stack in `macros.py` so the closing macro knows the QR path supplied by the opener. RapumaMD caches loaded macro modules across calls within a render so this state persists correctly.
 
 ## Key Files
 
@@ -82,7 +82,7 @@ QR codes float right via the `qr-code` CSS class:
 | `lib/spellcheck.py` | Spellcheck logic |
 | `lib/archive.py` | Archive logic |
 | `template_ssPrayerTime.md` | Master template; edit to change sections or layout |
-| `macros.py` | Project-local RapumaMD macros (missionary, prayer, title, hrule) |
+| `macros.py` | Project-local RapumaMD macros (missionary_section, end_missionary_section, missionary, prayer, title) |
 | `wordlist.txt` | Custom aspell dictionary (church names, acronyms) |
 | `.env` | `ANTHROPIC_API_KEY=...` (never commit) |
 | `QR_Codes/` | PNG QR images referenced by `<img>` tags in the template |

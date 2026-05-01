@@ -141,7 +141,7 @@ Implemented section matching and per-section Claude calls in `lib/prepare.py`.
 #### 3a — Section matching
 
 Matching normalizes both the `OrganizationName` from input filenames and the
-`@missionary()` / `@title()` macro arguments: CamelCase splitting, lowercase, alpha-only tokens. Matching
+`@missionary_section()` / `@title()` macro arguments: CamelCase splitting, lowercase, alpha-only tokens. Matching
 uses token overlap with prefix support (minimum 3-character prefix). Best-
 scoring section wins when multiple could match. A section may match zero, one,
 or multiple input files. Unmatched files are logged as warnings.
@@ -205,8 +205,8 @@ final rendering.
 | `lib/prepare.py` | Step 3: template split, section matching, Claude calls |
 | `lib/spellcheck.py` | Step 5: aspell via pandoc |
 | `lib/archive.py` | Step 7: zip and cleanup |
-| `template_ssPrayerTime.md` | Master template — sections delimited by `@missionary()` macros |
-| `macros.py` | Project-local RapumaMD macros (missionary, prayer, title, hrule) |
+| `template_ssPrayerTime.md` | Master template — sections delimited by `@missionary_section()` macros |
+| `macros.py` | Project-local RapumaMD macros (missionary_section, end_missionary_section, missionary, prayer, title) |
 | `known_senders.json` | Lookup table: text patterns → org/sender names for file rename |
 | `wordlist.txt` | Custom aspell dictionary (church names, acronyms) |
 | `.env` | `ANTHROPIC_API_KEY=...` — never commit |
@@ -228,3 +228,17 @@ Python (in `.venv/`): `anthropic`
 python3 -m venv .venv
 .venv/bin/pip install anthropic
 ```
+
+---
+
+## Known Issues / Planned Work
+
+### Life Source post-footer section still uses the old wrapfigure layout
+
+`template_ssPrayerTime.md` was migrated to `@missionary_section` / `@end_missionary_section` for all primary missionary entries to give every line in a section a uniform width. The Life Source block at the bottom still uses the legacy `@title(...)` heading + `<img class="qr-code">` floating QR pattern, which means it suffers the same paragraph-width inconsistency the migration fixed everywhere else: the QR floats right via `\wrapfigure`, body text wraps narrow for the figure's height then snaps back to full width.
+
+**Options:**
+- Add a `@title_section(text, qr_path)` / `@end_title_section()` pair that uses the same two-column minipage layout but renders the heading via a centered styled title (matching the current `@title(...)` look) instead of `\subsection*`.
+- Or just convert Life Source to `@missionary_section(Life Source Ministries, , QR_Codes/lifesourceministries.org.png)` and accept the smaller subsection-style heading.
+
+Either way it's a one-section change, low priority.
