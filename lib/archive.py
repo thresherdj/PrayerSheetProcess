@@ -4,8 +4,8 @@ import zipfile
 from pathlib import Path
 
 
-def run_archive(code: str, log, work_dir: Path, *, pdf_warning_accepted=False):
-    archive_dir = work_dir / "archive"
+def run_archive(code: str, log, work_dir: Path, archive_dir: Path, *, pdf_warning_accepted=False):
+    archive_dir = Path(archive_dir)
     input_dir = work_dir / "input"
     md = work_dir / f"{code}_ssPrayerTime.md"
     pdf = work_dir / f"{code}_ssPrayerTime.pdf"
@@ -30,7 +30,7 @@ def run_archive(code: str, log, work_dir: Path, *, pdf_warning_accepted=False):
     for f in input_files:
         log(f"  input/{f.name}")
 
-    archive_dir.mkdir(exist_ok=True)
+    archive_dir.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
         zf.write(md, md.name)
         if pdf.exists():

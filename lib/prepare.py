@@ -17,7 +17,7 @@ def _split_template(template_text):
         header + sections[:num_pre] + footer + sections[num_pre:]
 
     Sections are delimited by @missionary_section() macro lines. Post-footer
-    sections (e.g. Life Source) use @title() as the section delimiter.
+    sections (e.g. Life Source) use @title()/@title_section() as the delimiter.
     """
     lines = template_text.splitlines(keepends=True)
 
@@ -37,7 +37,7 @@ def _split_template(template_text):
     # Find post-footer @title() sections (like Life Source on page 3)
     if footer_start is not None:
         for i, line in enumerate(lines):
-            if i > footer_start and re.match(r"^@title\(", line):
+            if i > footer_start and re.match(r"^@title(?:_section)?\(", line):
                 heading_indices.append(i)
         heading_indices.sort()
 
@@ -147,7 +147,7 @@ def _match_files_to_sections(sections, md_files, log):
     section_tokens = {}
     for heading, _ in sections:
         # Extract arguments from @missionary_section(name, org, qr) or @title(text)
-        m = re.match(r'^@(?:missionary_section|title)\((.+)\)\s*$', heading)
+        m = re.match(r'^@(?:missionary_section|title_section|title)\((.+)\)\s*$', heading)
         raw = m.group(1) if m else heading
         section_tokens[heading] = _normalize(raw)
 
@@ -245,7 +245,12 @@ def run_prepare(code: str, log, work_dir: Path):
         log(f"  Sending: {heading}")
         prompt = f"""You are writing prayer requests for the monthly ssPrayerTime prayer guide ({label}).
 
-Below is the template section for one missionary or ministry, followed by all of this month's converted source material for that section. Distill clear and concise prayer requests from the source material. Each @prayer() line has [CONTENT NEEDED] after the macro call on the same line — fill in ONLY those placeholders with concise prayer text. Labeled lines look like "@prayer(Topic Name) [CONTENT NEEDED]" — keep the label, replace only [CONTENT NEEDED]. Unlabeled lines look like "@prayer() [CONTENT NEEDED]". Preserve all @prayer() macro calls exactly as written — only replace the [CONTENT NEEDED] text that follows them. Preserve all other macros (@missionary_section, @end_missionary_section, @hrule, @title, @framedbox, @endframedbox) and any HTML tags exactly as they appear. Keep block-level macros like @framedbox/@endframedbox on their own lines with blank lines around them — do not jam them inline with surrounding text. Output only the completed section — no explanation, no commentary.
+Below is the template section for one missionary or ministry, followed by all of this month's converted source material for that section. Distill clear and concise prayer requests from the source material. Each @prayer() line ends with [CONTENT NEEDED] after the macro call. Handle the two kinds of @prayer() lines differently:
+
+- LABELED line — "@prayer(Topic Name) [CONTENT NEEDED]": keep it one-to-one. Keep the label exactly as written and replace [CONTENT NEEDED] with one concise prayer request for that topic.
+- UNLABELED line — "@prayer() [CONTENT NEEDED]": this is a flexible slot for this section's requests, not a fixed single bullet. Replace it with one OR MORE "@prayer() <text>" lines — one per distinct prayer request you find in the source material, each on its own line. Produce only as many as the source genuinely warrants (often just one or two); do NOT invent requests to fill space, and produce at most 4. Never leave the literal text [CONTENT NEEDED] in your output (this section has source material).
+
+Every output bullet must still begin with a literal "@prayer(...)" macro call. Preserve all other macros (@missionary_section, @end_missionary_section, @title_section, @end_title_section, @hrule, @title, @framedbox, @endframedbox) and any HTML tags exactly as they appear. Keep block-level macros like @framedbox/@endframedbox on their own lines with blank lines around them — do not jam them inline with surrounding text. Output only the completed section — no explanation, no commentary.
 
 === SECTION ===
 {section_text}
@@ -253,11 +258,22 @@ Below is the template section for one missionary or ministry, followed by all of
 === SOURCE MATERIAL ===
 {matched_content}"""
 
-        message = client.messages.create(
-            model="claude-opus-4-6",
-            max_tokens=2048,
-            messages=[{"role": "user", "content": prompt}],
-        )
+        try:
+            message = client.messages.create(
+                model="claude-opus-4-6",
+                max_tokens=2048,
+                messages=[{"role": "user", "content": prompt}],
+            )
+        except anthropic.APIError as e:
+            detail = str(e)
+            try:
+                detail = e.body["error"]["message"]
+            except Exception:
+                pass
+            log(f"  Claude API error: {detail}")
+            log("Prepare aborted — no document written. Fix the issue above and run Prepare again.")
+            log("__ERROR_FLAG__")
+            return
         filled = message.content[0].text
         filled_sections.append(filled)
         log(f"  Section done: {heading}")

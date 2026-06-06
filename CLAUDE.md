@@ -10,17 +10,46 @@ The main entry point is `prayer_sheet.py`. Core logic lives in `lib/` as separat
 
 ## Running the Tool
 
+The installed launcher works from any directory:
+
 ```bash
-cd /home/dennis/MakerSpace/CodingProjects/MissionaryPrayerSheet/Production
+mtps
+```
+
+`~/.local/bin/mtps` execs the app via its venv python, so it does not depend on
+the current working directory. The script also bootstraps its own venv path at
+startup (`sys.path.insert`), so it can be run directly with the system `python3`:
+
+```bash
 .venv/bin/python prayer_sheet.py
 ```
 
-Or if the venv is active:
-```bash
-python prayer_sheet.py
-```
+### Folders (the two-folder model)
 
-The script bootstraps its own venv path at startup (`sys.path.insert`), so it can also be run directly with the system `python3`.
+The app no longer uses `cwd`. The two folders it operates on are remembered in
+**`~/.config/mtps/config.json`** (`lib/config.py`), independent of where it is
+launched from, and editable in-app via the **Folders → Change…** pickers:
+
+- **`work_dir`** — the active workbench. Holds `input/`, `QR_Codes/`, and the
+  draft `{YYYYMM}_ssPrayerTime.md`/`.pdf` while the sheet is built.
+  Currently `~/Claude/2_Church/Missions/MonthlyPrayerSheet/`.
+- **`archive_dir`** — the permanent record; finished zips land here.
+  Currently `~/Documents/PGCC/Missions/MonthlyPrayerSheet/archive/`.
+
+`QR_Codes/` lives inside `work_dir` (a stable asset, set up once — not a
+config setting). rapumamd is run with `cwd=work_dir` so the template's relative
+`QR_Codes/...png` paths resolve. `prayer_sheet.py` holds `WORK_DIR`,
+`ARCHIVE_DIR`, `INPUT_DIR` module globals set by `_apply_dirs()`.
+
+**macros.py resolution (important):** rapumamd looks for `macros.py` *next to
+the `.md` being rendered* (local), which takes precedence over the user-global
+`~/.config/rapumamd/macros.py`. The repo's `macros.py` is the source of truth,
+but it is **not** on rapumamd's search path during the real workflow (the `.md`
+renders in `work_dir`). So `_do_open_rapumamd` copies `APP_DIR/macros.py` →
+`WORK_DIR/macros.py` before every render. Edit the repo's `macros.py`; the app
+syncs it. Do not rely on the global copy — it is a stale snapshot and missing
+newer macros (e.g. `@title_section`). Built-ins (`@hrule`, `@today`,
+`@framedbox`) come from rapumamd itself and need no local definition.
 
 ## Architecture
 
@@ -28,15 +57,16 @@ The script bootstraps its own venv path at startup (`sys.path.insert`), so it ca
 
 ```
 Production/
-├── prayer_sheet.py      # GUI only — App class, load_env, parse_date, md_path, pdf_path
+├── prayer_sheet.py      # GUI only — App class, load_env, parse_date, md_path, pdf_path, _apply_dirs
 ├── lib/
+│   ├── config.py        # Two-folder config (~/.config/mtps/config.json)
 │   ├── convert.py       # Step 2: convertmd subprocess, rename, error logging
 │   ├── prepare.py       # Step 3: template split, Claude API calls
 │   ├── spellcheck.py    # Step 5: aspell via pandoc
 │   └── archive.py       # Step 7: zip and cleanup
 ```
 
-All long-running work runs in daemon threads to keep the GUI responsive. Thread-to-GUI communication goes through a `queue.Queue` polled every 100ms via `self.after(100, self._poll_queue)`.
+All long-running work runs in daemon threads to keep the GUI responsive. Thread-to-GUI communication goes through a `queue.Queue` polled every 100ms via `self.after(100, self._poll_queue)`. Steps are launched via `App._spawn(fn, *args)`, which wraps the thread target in a try/except so any uncaught exception (API/credit/network failure, etc.) is logged to the Output box and lights the error flag (`__ERROR_FLAG__`) instead of dumping a traceback to the terminal and silently killing the thread. `run_prepare` additionally catches `anthropic.APIError` per call, surfaces the API's own message (e.g. low credit balance), and aborts without writing a partial document.
 
 **Step 2 — Convert Input Files (`lib/convert.py`):**
 1. Runs `convertmd <file>` on each non-`.md` file in `input/` (all conversion goes through the system-wide `convertmd` tool — no built-in readers).
@@ -53,7 +83,7 @@ All long-running work runs in daemon threads to keep the GUI responsive. Thread-
 **Other buttons:**
 - **Open in rapumamd** — launches `rapumamd` on the dated `.md` for iterative review (Step 4) and final PDF generation (Step 6).
 - **Spellcheck** — pipes the dated `.md` through `pandoc -t plain` then `aspell list` against `wordlist.txt`.
-- **Archive** — zips dated `.md`, `.pdf` (warns but doesn't block if missing), and all `input/` files into `archive/{YYYYMM}_ssPrayerTime.zip`, then deletes the originals.
+- **Archive** — zips dated `.md`, `.pdf` (warns but doesn't block if missing), and all `input/` files into `{archive_dir}/{YYYYMM}_ssPrayerTime.zip`, then deletes the originals. `run_archive(code, log, work_dir, archive_dir)`.
 
 ### Template Structure
 
@@ -61,9 +91,10 @@ The template uses RapumaMD macros (expanded at render time via `macros.py`):
 
 - `@missionary_section(Name, Organization, qr_path)` / `@end_missionary_section()` — open/close a two-column section. Heading + body + bullets sit in a fixed-width left minipage; the QR code sits in a fixed-width right minipage. Every line in the section has uniform width — no wrapfigure flow inconsistency. `qr_path` is optional; if omitted the section runs full width.
 - `@missionary(Name, Organization)` — legacy section heading (just emits a `\subsection*`); kept for backwards compatibility.
-- `@prayer(label)` — a prayer request bullet. The optional label appears bold before an em dash; prayer text (or `[CONTENT NEEDED]`) follows on the same line after the macro call. e.g. `@prayer(Topic Name) [CONTENT NEEDED]` or `@prayer() [CONTENT NEEDED]`.
+- `@prayer(label)` — a prayer request bullet. The optional label appears bold before an em dash; prayer text (or `[CONTENT NEEDED]`) follows on the same line after the macro call. e.g. `@prayer(Topic Name) [CONTENT NEEDED]` or `@prayer() [CONTENT NEEDED]`. **Labeled vs unlabeled drives Prepare's fill behavior:** a *labeled* line is filled 1:1 (keep label, replace `[CONTENT NEEDED]` with one request — used where each named person/topic should always appear, e.g. Fort Wilderness staff). An *unlabeled* `@prayer() [CONTENT NEEDED]` is a *flexible slot*: Prepare may expand it into one or more plain `@prayer()` bullets (≤4), one per distinct request found in the source, or just one — used where the heading already names the sub-ministries and only requested items should appear (e.g. the Dewings/Midwest Indian Mission section, and the org sections OCC/WILD/Life Source).
 - `@hrule(1pt)` — horizontal rule between sections.
-- `@title(text)` — styled title block (document title and post-footer sections like Life Source).
+- `@title(text)` — styled title block (document title).
+- `@title_section(text, qr_path)` / `@end_title_section()` — two-column section (same uniform-width minipage layout as `@missionary_section`) with a centered styled title heading instead of a `\subsection*`. Used for post-footer sections like Life Source. `qr_path` optional.
 - `@today()` — current date (used in frontmatter and title).
 
 Sections are delimited by `@missionary_section(...)` lines. The footer begins at the line starting with `"Jesus reminds us"`. Post-footer sections (e.g., Life Source on page 3) use `@title()` as the delimiter and are handled correctly.
@@ -77,18 +108,21 @@ The `@missionary_section` / `@end_missionary_section` pair shares state through 
 | File | Purpose |
 |------|---------|
 | `prayer_sheet.py` | GUI entry point |
+| `lib/config.py` | Two-folder config: load/save `~/.config/mtps/config.json` |
+| `~/.local/bin/mtps` | Launcher — runs the app from anywhere via the venv python |
 | `lib/convert.py` | Input conversion via convertmd + rename |
 | `lib/prepare.py` | Template splitting and Claude API calls |
 | `lib/spellcheck.py` | Spellcheck logic |
 | `lib/archive.py` | Archive logic |
 | `template_ssPrayerTime.md` | Master template; edit to change sections or layout |
-| `macros.py` | Project-local RapumaMD macros (missionary_section, end_missionary_section, missionary, prayer, title) |
+| `macros.py` | Project-local RapumaMD macros (missionary_section, end_missionary_section, title_section, end_title_section, missionary, prayer, title) |
 | `wordlist.txt` | Custom aspell dictionary (church names, acronyms) |
 | `.env` | `ANTHROPIC_API_KEY=...` (never commit) |
 | `QR_Codes/` | PNG QR images referenced by `<img>` tags in the template |
 | `known_senders.json` | Lookup table mapping text patterns to org/sender names |
-| `input/` | Drop source files here before running Convert |
-| `archive/` | Completed monthly zips |
+| `{work_dir}/input/` | Drop source files here before running Convert |
+| `{archive_dir}/` | Completed monthly zips |
+| `~/.config/mtps/config.json` | Remembered `work_dir` + `archive_dir` |
 
 ## Dependencies
 

@@ -206,7 +206,7 @@ final rendering.
 | `lib/spellcheck.py` | Step 5: aspell via pandoc |
 | `lib/archive.py` | Step 7: zip and cleanup |
 | `template_ssPrayerTime.md` | Master template — sections delimited by `@missionary_section()` macros |
-| `macros.py` | Project-local RapumaMD macros (missionary_section, end_missionary_section, missionary, prayer, title) |
+| `macros.py` | Project-local RapumaMD macros (missionary_section, end_missionary_section, title_section, end_title_section, missionary, prayer, title) |
 | `known_senders.json` | Lookup table: text patterns → org/sender names for file rename |
 | `wordlist.txt` | Custom aspell dictionary (church names, acronyms) |
 | `.env` | `ANTHROPIC_API_KEY=...` — never commit |
@@ -233,12 +233,19 @@ python3 -m venv .venv
 
 ## Known Issues / Planned Work
 
-### Life Source post-footer section still uses the old wrapfigure layout
+### Life Source post-footer section — resolved
 
-`template_ssPrayerTime.md` was migrated to `@missionary_section` / `@end_missionary_section` for all primary missionary entries to give every line in a section a uniform width. The Life Source block at the bottom still uses the legacy `@title(...)` heading + `<img class="qr-code">` floating QR pattern, which means it suffers the same paragraph-width inconsistency the migration fixed everywhere else: the QR floats right via `\wrapfigure`, body text wraps narrow for the figure's height then snaps back to full width.
+Previously the Life Source block used the legacy `@title(...)` heading +
+`<img class="qr-code">` floating QR pattern, suffering the same paragraph-width
+inconsistency (`\wrapfigure` narrow-then-snap) the two-column migration fixed
+elsewhere.
 
-**Options:**
-- Add a `@title_section(text, qr_path)` / `@end_title_section()` pair that uses the same two-column minipage layout but renders the heading via a centered styled title (matching the current `@title(...)` look) instead of `\subsection*`.
-- Or just convert Life Source to `@missionary_section(Life Source Ministries, , QR_Codes/lifesourceministries.org.png)` and accept the smaller subsection-style heading.
+Resolved by adding a `@title_section(text, qr_path)` / `@end_title_section()`
+macro pair (`macros.py`) that reuses the same uniform-width two-column minipage
+layout as `@missionary_section`, but renders the heading as a centered styled
+title (matching the `@title(...)` look) instead of a `\subsection*`. The
+splitter and matcher in `lib/prepare.py` recognize `@title_section` as a
+post-footer section delimiter alongside `@title`. Verified rendering clean to
+PDF.
 
-Either way it's a one-section change, low priority.
+No remaining known issues.

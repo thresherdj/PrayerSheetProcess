@@ -28,12 +28,7 @@ native tribes through the New Hope Homeless Shelter and the Wasmogishek Food Pan
 three churches: Lake Lucerne Gospel Chapel (Don Dewing, Pastor), Sunnyside Community Church
 (Adam Dewing, Pastor), and WabaNun-Nung Gospel Chapel (Richard Jensen, Pastor).
 
-@prayer(Lake Lucerne Gospel Chapel) [CONTENT NEEDED]
-@prayer(Sunnyside Community Church) [CONTENT NEEDED]
-@prayer(WabaNun-Nung Gospel Chapel) [CONTENT NEEDED]
-@prayer(MIM Youth Ministry) [CONTENT NEEDED]
-@prayer(New Hope Homeless Shelter) [CONTENT NEEDED]
-@prayer(Wasmogishek Food Pantry) [CONTENT NEEDED]
+@prayer() [CONTENT NEEDED]
 @end_missionary_section()
 
 @hrule(1pt)
@@ -88,27 +83,16 @@ build relationships with WILD's international team, donors, and curriculum devel
 
 @hrule(1pt)
 
-@missionary_section(Abigail & Richie Giles, Fort Wilderness)
-
-Abigail grew up at Pine Grove and married Richie in 2022. They are currently raising support to
-work full-time with Fort Wilderness Ministries. Those interested in following or supporting them
-may contact: abbygiles@fortwilderness.com
-
-@prayer() [CONTENT NEEDED]
-@end_missionary_section()
-
-@hrule(1pt)
-
 @framedbox()
 Jesus reminds us in Luke 10:2, “The harvest is plentiful, but the laborers are few. Therefore pray earnestly to the Lord of the harvest to send out laborers into His harvest.” The harvest belongs to the Father, and it is our responsibility to pray for the laborers He chooses. The local church plays a central role in God’s plan. Let us pray that the Lord would enable Pine Grove Community Church to send out laborers from among us who will work for His glory and the advancement of His Kingdom.
 @endframedbox()
 
 @hrule(1pt)
 
-@title(Life Source Ministries)
-<img src="QR_Codes/lifesourceministries.org.png" class="qr-code" alt="Life Source">
+@title_section(Life Source Ministries, QR_Codes/lifesourceministries.org.png)
 Life Source is a pro-life pregnancy resource center serving the Rhinelander area, offering
 support to women facing unplanned pregnancies and advocating for the unborn in the local
 community and beyond.
 
 @prayer() [CONTENT NEEDED]
+@end_title_section()

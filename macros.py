@@ -64,6 +64,36 @@ def end_missionary_section(*args) -> str:
         "```\n\n"
     )
 
+def title_section(*args) -> str:
+    """@title_section(text, qr_path) — open a two-column section with a
+    centered styled title (matching the @title() look) on the left and the
+    QR code on the right. Must be paired with @end_title_section().
+    qr_path is optional; if omitted the section runs full width.
+
+    Same uniform-width two-column layout as @missionary_section, but the
+    heading is a styled title block instead of a \\subsection*.
+    """
+    text = args[0] if args else "Untitled"
+    qr = args[1].strip() if len(args) > 1 else ""
+    _section_qr_stack.append(qr)
+    heading = title(text)
+
+    if not qr:
+        return f"\n\n{heading}\n\n"
+
+    return (
+        "\n\n```{=latex}\n"
+        "\\noindent\\begin{minipage}[t]{0.78\\textwidth}\n"
+        f"{heading}\n"
+        "```\n\n"
+    )
+
+
+def end_title_section(*args) -> str:
+    """@end_title_section() — close a section opened by @title_section()."""
+    return end_missionary_section(*args)
+
+
 def prayer(*args) -> str:
     """@prayer(label) — start a prayer request bullet point.
     If a label is given, it is bold followed by an em dash.

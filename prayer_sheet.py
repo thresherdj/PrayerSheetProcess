@@ -21,22 +21,46 @@ for _sp in glob.glob(str(_venv_lib / "python*/site-packages")):
 
 import os
 import queue
+import shutil
 import subprocess
 import threading
 import tkinter as tk
-from tkinter import messagebox, scrolledtext
+from tkinter import messagebox, scrolledtext, filedialog
 from datetime import datetime
 from pathlib import Path
 
+from lib.config import load_config, save_config
 from lib.convert import run_convert
 from lib.prepare import run_prepare
 from lib.spellcheck import run_spellcheck
 from lib.archive import run_archive
 
 APP_DIR = Path(__file__).parent
-WORK_DIR = Path.cwd()
-INPUT_DIR = WORK_DIR / "input"
 ENV_FILE = APP_DIR / ".env"
+
+# Working/archive folders come from ~/.config/mtps/config.json, not cwd —
+# so `mtps` can be launched from anywhere. _apply_dirs() keeps these in sync.
+WORK_DIR = Path()
+ARCHIVE_DIR = Path()
+INPUT_DIR = Path()
+
+
+def _apply_dirs(work, archive, persist=True):
+    """Set the working and archive folders (and derived input/) globally.
+
+    Reassigns the module globals that md_path/pdf_path and the GUI read.
+    When persist is True, writes the choice back to the config file.
+    """
+    global WORK_DIR, ARCHIVE_DIR, INPUT_DIR
+    WORK_DIR = Path(work)
+    ARCHIVE_DIR = Path(archive)
+    INPUT_DIR = WORK_DIR / "input"
+    if persist:
+        save_config({"work_dir": str(WORK_DIR), "archive_dir": str(ARCHIVE_DIR)})
+
+
+_cfg = load_config()
+_apply_dirs(_cfg["work_dir"], _cfg["archive_dir"], persist=False)
 
 
 # ── Environment ───────────────────────────────────────────────────────────────
@@ -100,9 +124,27 @@ class App(tk.Tk):
                  font=("Courier", 12)).grid(
             row=1, column=1, sticky="w", **pad)
 
+        # ── Folders (remembered in ~/.config/mtps/config.json) ────────────────
+        folders = tk.LabelFrame(self, text="Folders", padx=8, pady=4)
+        folders.grid(row=2, column=0, columnspan=2, padx=12, pady=(0, 4), sticky="ew")
+
+        self._work_var = tk.StringVar(value=str(WORK_DIR))
+        tk.Label(folders, text="Working:").grid(row=0, column=0, sticky="e")
+        tk.Label(folders, textvariable=self._work_var, anchor="w",
+                 width=52, fg="#333").grid(row=0, column=1, sticky="w", padx=4)
+        tk.Button(folders, text="Change…",
+                  command=self._change_work).grid(row=0, column=2, padx=4)
+
+        self._archive_var = tk.StringVar(value=str(ARCHIVE_DIR))
+        tk.Label(folders, text="Archive:").grid(row=1, column=0, sticky="e")
+        tk.Label(folders, textvariable=self._archive_var, anchor="w",
+                 width=52, fg="#333").grid(row=1, column=1, sticky="w", padx=4)
+        tk.Button(folders, text="Change…",
+                  command=self._change_archive).grid(row=1, column=2, padx=4)
+
         # ── Buttons ───────────────────────────────────────────────────────────
         btn_frame = tk.Frame(self)
-        btn_frame.grid(row=2, column=0, columnspan=2, pady=8)
+        btn_frame.grid(row=3, column=0, columnspan=2, pady=8)
 
         tk.Button(btn_frame, text="1. Convert Input", width=16,
                   command=self._do_convert).pack(side="left", padx=6)
@@ -122,16 +164,16 @@ class App(tk.Tk):
             self, textvariable=self._error_var,
             fg="red", font=("Helvetica", 10, "bold")
         )
-        self._error_label.grid(row=3, column=0, columnspan=2, pady=(0, 4))
+        self._error_label.grid(row=4, column=0, columnspan=2, pady=(0, 4))
 
         # ── Output area ───────────────────────────────────────────────────────
         tk.Label(self, text="Output:", anchor="w").grid(
-            row=4, column=0, columnspan=2, sticky="w", padx=12)
+            row=5, column=0, columnspan=2, sticky="w", padx=12)
         self._output = scrolledtext.ScrolledText(
             self, width=70, height=16, state="disabled",
             font=("Courier", 10), wrap="word"
         )
-        self._output.grid(row=5, column=0, columnspan=2, padx=12, pady=(0, 12))
+        self._output.grid(row=6, column=0, columnspan=2, padx=12, pady=(0, 12))
         self._output.tag_configure(
             "instruct",
             font=("Courier", 10, "bold"),
@@ -142,7 +184,7 @@ class App(tk.Tk):
 
         # ── Bottom buttons ────────────────────────────────────────────────────
         bottom = tk.Frame(self)
-        bottom.grid(row=6, column=0, columnspan=2, pady=(0, 12))
+        bottom.grid(row=7, column=0, columnspan=2, pady=(0, 12))
         tk.Button(bottom, text="Clear output",
                   command=self._clear_output).pack(side="left", padx=6)
         tk.Button(bottom, text="Close",
@@ -159,7 +201,7 @@ class App(tk.Tk):
                 msg = self._msg_queue.get_nowait()
                 # Internal signal: set or clear the error flag
                 if msg == "__ERROR_FLAG__":
-                    self._error_var.set("Conversion errors \u2014 see input/error.log")
+                    self._error_var.set("Errors occurred \u2014 see Output below.")
                     continue
                 if msg == "__CLEAR_ERROR__":
                     self._error_var.set("")
@@ -181,6 +223,24 @@ class App(tk.Tk):
         self._output.delete("1.0", "end")
         self._output.configure(state="disabled")
 
+    # ── Folder settings ─────────────────────────────────────────────────────────
+
+    def _change_work(self):
+        d = filedialog.askdirectory(
+            initialdir=str(WORK_DIR), title="Select working folder")
+        if d:
+            _apply_dirs(d, ARCHIVE_DIR)
+            self._work_var.set(str(WORK_DIR))
+            self._log(f"Working folder set to: {WORK_DIR}")
+
+    def _change_archive(self):
+        d = filedialog.askdirectory(
+            initialdir=str(ARCHIVE_DIR), title="Select archive folder")
+        if d:
+            _apply_dirs(WORK_DIR, d)
+            self._archive_var.set(str(ARCHIVE_DIR))
+            self._log(f"Archive folder set to: {ARCHIVE_DIR}")
+
     # ── Date validation ───────────────────────────────────────────────────────
 
     def _get_code(self):
@@ -192,6 +252,17 @@ class App(tk.Tk):
 
     # ── Button handlers ───────────────────────────────────────────────────────
 
+    def _spawn(self, fn, *args):
+        """Run fn(*args) in a daemon thread, routing any uncaught exception to
+        the GUI Output + error flag instead of crashing the thread silently."""
+        def _wrapped():
+            try:
+                fn(*args)
+            except Exception as e:
+                self._log(f"\nUnexpected error: {e}")
+                self._log("__ERROR_FLAG__")
+        threading.Thread(target=_wrapped, daemon=True).start()
+
     def _do_convert(self):
         code = self._get_code()
         if not code:
@@ -199,25 +270,20 @@ class App(tk.Tk):
 
         def _run():
             self._log("__CLEAR_ERROR__")
-            had_errors = run_convert(code, self._log, WORK_DIR)
-            if had_errors:
+            if run_convert(code, self._log, WORK_DIR):
                 self._log("__ERROR_FLAG__")
 
-        threading.Thread(target=_run, daemon=True).start()
+        self._spawn(_run)
 
     def _do_prepare(self):
         code = self._get_code()
         if code:
-            threading.Thread(
-                target=run_prepare, args=(code, self._log, WORK_DIR), daemon=True
-            ).start()
+            self._spawn(run_prepare, code, self._log, WORK_DIR)
 
     def _do_spellcheck(self):
         code = self._get_code()
         if code:
-            threading.Thread(
-                target=run_spellcheck, args=(code, self._log, WORK_DIR), daemon=True
-            ).start()
+            self._spawn(run_spellcheck, code, self._log, WORK_DIR)
 
     def _do_open_rapumamd(self):
         code = self._get_code()
@@ -230,11 +296,21 @@ class App(tk.Tk):
         self._log(f"Opening rapumamd for {md.name}...")
 
         def launch():
+            # rapumamd resolves macros from a macros.py next to the .md (local),
+            # which takes precedence over the user-global ~/.config/rapumamd/macros.py.
+            # Sync the project's macros.py (source of truth in the app dir) into the
+            # work folder so the current project macros are always the ones used.
+            try:
+                shutil.copy2(APP_DIR / "macros.py", WORK_DIR / "macros.py")
+            except OSError as e:
+                self._log(f"Warning: could not sync macros.py to the work folder: {e}")
+
             try:
                 proc = subprocess.run(
                     ["rapumamd", "render", str(md)],
                     capture_output=True,
                     text=True,
+                    cwd=str(WORK_DIR),
                 )
             except FileNotFoundError:
                 self._log("Error: 'rapumamd' command not found on PATH. Install it with `pipx install -e ~/MakerSpace/CodingProjects/RapumaMD`.")
@@ -272,13 +348,11 @@ class App(tk.Tk):
             lines.append(f"  \u2022 {pdf.name} (NOT FOUND — will archive without PDF)")
         for f in input_files:
             lines.append(f"  \u2022 input/{f.name}")
-        lines.append(f"\nZip: archive/{code}_ssPrayerTime.zip")
+        lines.append(f"\nZip: {ARCHIVE_DIR / (code + '_ssPrayerTime.zip')}")
         lines.append("\nProceed?")
 
         if messagebox.askyesno("Confirm Archive", "\n".join(lines)):
-            threading.Thread(
-                target=run_archive, args=(code, self._log, WORK_DIR), daemon=True
-            ).start()
+            self._spawn(run_archive, code, self._log, WORK_DIR, ARCHIVE_DIR)
         else:
             self._log("Archive cancelled.")
 
