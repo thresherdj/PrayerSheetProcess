@@ -22,14 +22,13 @@ def missionary(*args) -> str:
 
 
 def missionary_section(*args) -> str:
-    """@missionary_section(name, organization, qr_path) — open a two-column
-    section with the body text on the left and the QR code on the right.
-    Must be paired with @end_missionary_section() at the end of the section.
-    qr_path is optional; if omitted the section runs full width.
+    """@missionary_section(name, organization, qr_path) — open a section with
+    the QR floated to the top-right (wrapfigure) and the heading + body +
+    bullets flowing as normal, page-breakable text. Must be paired with
+    @end_missionary_section(). qr_path optional; omitted = full width.
 
-    Layout: text in a fixed-width left minipage, QR in a fixed-width right
-    minipage. Every line in the section has the same width — no wrapfigure
-    flow inconsistency.
+    Floated (not minipage) so a long section can split across a page break and
+    fill the space, rather than leaping whole to the next page.
     """
     name = _escape(args[0]) if args else "Name"
     org = _escape(args[1]) if len(args) > 1 else ""
@@ -42,48 +41,46 @@ def missionary_section(*args) -> str:
 
     return (
         "\n\n```{=latex}\n"
-        "\\noindent\\begin{minipage}[t]{0.78\\textwidth}\n"
+        "\\begin{wrapfigure}{r}{1.15in}\n"
+        "\\vspace{-\\baselineskip}\n"
+        f"\\includegraphics[width=1in]{{{qr}}}\n"
+        "\\end{wrapfigure}\n"
         f"\\subsection*{{{heading}}}\n"
         "```\n\n"
     )
 
 
 def end_missionary_section(*args) -> str:
-    """@end_missionary_section() — close a section opened by @missionary_section()."""
-    qr = _section_qr_stack.pop() if _section_qr_stack else ""
-    if not qr:
-        return "\n\n"
+    """@end_missionary_section() — close a section opened by
+    @missionary_section(). The QR is floated at the section top now, so this
+    just ends the section's text block."""
+    if _section_qr_stack:
+        _section_qr_stack.pop()
+    return "\n\n"
 
-    return (
-        "\n\n```{=latex}\n"
-        "\\end{minipage}\\hfill"
-        "\\begin{minipage}[t]{0.20\\textwidth}\n"
-        "\\vspace{0pt}\n"
-        f"\\includegraphics[width=1in]{{{qr}}}\n"
-        "\\end{minipage}\n"
-        "```\n\n"
-    )
 
 def title_section(*args) -> str:
-    """@title_section(text, qr_path) — open a two-column section with a
-    centered styled title (matching the @title() look) on the left and the
-    QR code on the right. Must be paired with @end_title_section().
-    qr_path is optional; if omitted the section runs full width.
-
-    Same uniform-width two-column layout as @missionary_section, but the
-    heading is a styled title block instead of a \\subsection*.
+    """@title_section(text, qr_path) — a post-footer section (e.g. Life Source).
+    Structurally identical to @missionary_section: a left-aligned \\subsection*
+    heading with the QR floated top-right and the body flowing/breakable. (An
+    earlier centered-title version fought wrapfig and shifted the body's
+    margins, so the heading uses the same style as the other sections.)
+    Paired with @end_title_section(). qr_path optional.
     """
-    text = args[0] if args else "Untitled"
+    text = _escape(args[0]) if args else "Untitled"
     qr = args[1].strip() if len(args) > 1 else ""
     _section_qr_stack.append(qr)
-    heading = title(text)
+    heading = f"\\subsection*{{{text}}}"
 
     if not qr:
         return f"\n\n{heading}\n\n"
 
     return (
         "\n\n```{=latex}\n"
-        "\\noindent\\begin{minipage}[t]{0.78\\textwidth}\n"
+        "\\begin{wrapfigure}{r}{1.15in}\n"
+        "\\vspace{-\\baselineskip}\n"
+        f"\\includegraphics[width=1in]{{{qr}}}\n"
+        "\\end{wrapfigure}\n"
         f"{heading}\n"
         "```\n\n"
     )
