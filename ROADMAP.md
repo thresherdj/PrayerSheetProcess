@@ -1,251 +1,152 @@
-# ssPrayerTime Production System — Roadmap
+# ssPrayerTime — Roadmap
 
-This document is the implementation spec for the ssPrayerTime refactor.
-Consult `prayer_sheet.py`, `template_ssPrayerTime.md`, and `README.md`
-for current behavior before making changes.
+This roadmap supersedes the original modular-refactor spec. It captures the
+**goals**, the **target architecture** (a continuous capture-and-curate
+redesign agreed June 2026), and a **phased plan** to get there — starting with
+getting *this* month's sheet out by brute force on the current tool.
 
----
-
-## Goal
-
-The ssPrayerTime production system is a GUI tool that assists the missions
-coordinator at Pine Grove Community Church (PGCC) in producing a monthly prayer
-sheet for distribution to the congregation. Each month, prayer updates are
-collected from missionaries and ministries in various file formats. The system
-converts those files to Markdown via `convertmd`, uses Claude AI to distill
-concise prayer requests from newsletters and other correspondence, then formats
-these prayer requests into the corresponding sections of a master template, and
-renders the result to a polished PDF via RapumaMD. The workflow is designed to
-minimize manual effort while keeping the human in control of review, editing,
-and final approval at each stage.
+Companion docs: `CLAUDE.md` (architecture/how-to) and the project memory under
+`~/.claude/projects/.../memory/` (the goal notes + `refactor-vision`).
 
 ---
 
-## Workflow Overview (7 Steps)
+## The three goals (everything answers to these)
 
-| Step | Name | Status |
-|------|------|--------|
-| 1 | Launch GUI / enter month | Complete |
-| 2 | Convert input files | Complete |
-| 3 | Prepare Document | Complete |
-| 4 | Review (iterative PDF render) | Complete |
-| 5 | Spellcheck | Complete |
-| 6 | Generate final PDF | Complete |
-| 7 | Archive | Complete |
+1. **North star — the content.** Enable the PGCC congregation to pray
+   *specifically and currently* for the seven supported ministries. Success =
+   requests that are **current, concise, accurate, and trustworthy** (Dennis
+   reviews every word; the tool never auto-publishes). Everything else is
+   scaffolding.
+2. **Involvement — the people.** Grow the Mission Team through *meaningful*
+   participation and grow missions awareness in the congregation. The humans
+   are a **feature, not an inefficiency** — reduce friction *for* the team,
+   never engineer them out. The encourager↔missionary relationship is itself
+   ministry.
+3. **Operating principle — the division of labor.** Full automation isn't
+   realistic; the process will always need Dennis's judgment, review, and
+   relationship work. So the tool **automates what it can** and, for the rest,
+   acts as a **process-keeper**: track state across the monthly cycle and
+   **nudge** when something's missing or slipping. Be process-aware, not a row
+   of stateless buttons.
 
-All phases implemented. Integration testing (Phase 5) passed for steps 1, 3,
-5, and 7 programmatically. Steps 2, 4, and 6 require manual testing with real
-input files and external tools (`convertmd`, `rapumamd`, Claude API).
+The honest tension: efficiency can pull against involvement. A change that
+eases the software but sidelines a team member is a *net loss*. Good designs
+serve all three.
 
 ---
 
-## Architecture
+## Where we are today
 
-### Entry point
+The current tool works end-to-end but its **front half is brittle**:
 
-`prayer_sheet.py` — the tkinter GUI. Contains `App`, `load_env()`,
-`parse_date()`, `md_path()`, `pdf_path()`, and `__main__` entry.
+- `mtps` GUI, `template_ssPrayerTime.md`, `macros.py`, RapumaMD render, and
+  archive are solid and stay.
+- **The fragile part:** `lib/convert.py` identifies senders by *substring*
+  match against `known_senders.json` (e.g. the key `"don"` matched inside
+  `"don't"`), and `lib/prepare.py` then *fuzzy-matches* filenames to template
+  sections. In the June run this misfiled a Fort Wilderness email into the
+  Dewings section and scattered several "Re: reminder" replies into the wrong
+  ministries. This whole identify/match approach is what the redesign replaces.
 
-### Modular structure
+---
+
+## Target architecture (the redesign)
+
+Shift from end-of-month batch guessing to **continuous capture with human
+curation**, so identification happens *at capture, with Dennis in the loop* —
+one request at a time — instead of blindly after the fact.
 
 ```
-Production/
-├── prayer_sheet.py          # GUI entry point only — imports from lib/
-├── lib/
-│   ├── convert.py           # Step 2: convertmd conversion + rename
-│   ├── prepare.py           # Step 3: template split + section matching + Claude calls
-│   ├── spellcheck.py        # Step 5: aspell via pandoc
-│   └── archive.py           # Step 7: zip + cleanup
+Back half of month (continuous):
+  Skill 2 (outbound) ── drafts personal, ministry-tagged reminder emails to
+                        each encourager  (the involvement engine)
+        │
+        ▼
+  team replies  +  org emails Dennis receives directly (LSI alerts, WILD…)
+        │   all land in the inbox
+        ▼
+  Skill 1 (capture) ── scans inbox ~daily → distills each request to ≤3
+                       sentences → nudges Dennis → he REVIEWS & SELECTS →
+                       keepers go to a JSON store, tagged for the target month
+
+Day before the first Sunday (assembly):
+  small app ── harvest the month's selected requests from JSON → write the
+               dated .md → Dennis reviews/tweaks → render with RapumaMD → PDF
+
+Close-out:
+  Claude drafts the office email (done + PDF attached), CC the MT  ← closes
+  the involvement loop (team sees the finished sheet) → archive
 ```
 
-### Conversion
+Why it's the right shape: the brittle front half **disappears** — by assembly
+time the JSON is already clean and sorted, so the build is trivial; every human
+checkpoint (select, review the `.md`, render, send) is where judgment adds
+value.
 
-All file-to-Markdown conversion goes through the system-wide `convertmd` tool.
-There are no built-in file readers (docx, eml, etc.) in this project —
-`convertmd` handles all formats including OCR PDFs. If `convertmd` fails for a
-file, the failure is logged and the file is left in place for manual handling.
+### Seams to validate (by risk)
 
-### Threading model — do not break
-
-All `run_*` functions accept a `log` callback and must never call tkinter
-directly. Thread-to-GUI communication goes through `queue.Queue` polled every
-100ms via `self.after(100, self._poll_queue)`. The error flag uses special
-signal messages (`__ERROR_FLAG__`, `__CLEAR_ERROR__`) through the same queue.
-
----
-
-## Implementation Phases
-
-All phases are complete. The sections below document what was implemented
-in each phase for reference.
-
----
-
-### Phase 1 — Refactor: Modular Architecture (Complete)
-
-Established the modular file structure. Moved functions from the monolithic
-`make_pdf.py` into `prayer_sheet.py` + `lib/` modules. `make_pdf.py` deleted;
-recoverable from git history.
+1. **Inbox read access — the keystone, prove first.** Which account
+   (submissions appear to land at a Gmail, `dd86.coin@gmail.com`) and how a
+   skill reaches it. Gmail tools incl. draft creation are available in the
+   Claude environment, but the account must be connected. Fallback: local IMAP.
+2. **Email send + PDF attachment.** Drafting is likely; autonomous *send* and
+   *attach* are uncertain → probably lands as "Claude drafts, Dennis sends,"
+   which is also the right human checkpoint for mail to the team/office.
+3. **Two scheduled triggers** — the daily capture run and the "day before the
+   first Sunday" assembly (needs first-Sunday date math).
+4. **Review/select UX** — the one genuinely new surface; design carefully.
+5. **JSON schema** — the contract between capture and assembly: ministry key,
+   ≤3-sentence summary, source/sender, date received, target month, status
+   (`pending`/`selected`/`used`/`archived`).
 
 ---
 
-### Phase 2 — Step 2: Input Conversion Pipeline (Complete)
+## Phased plan
 
-Implemented `run_convert(code, log)` in `lib/convert.py`:
+### Phase 0 — Get June out by brute force (current tool) — NEXT SESSION
+The new system isn't built, so this month uses the existing tool with manual
+cleanup of the misfiled input:
+- In the work folder's `input/`, **re-sort the misfiled files** to the correct
+  ministry (read each one's `From:`/content, ignore the bad labels). Known bad:
+  the FW/Kusilek email mislabeled `MidwestIndianMission_DewingDon`; several
+  "Re: reminder" replies mislabeled `LivingStonesInternational`; one in
+  `RockInternational`.
+- **Remove non-submissions** (the bare "Mission Team Prayer Sheet Reminder" /
+  "Updates Welcome" emails with no requests) and the dropped **Giles** file.
+- Confirm each of the seven has its real material (or is knowingly empty —
+  e.g. Roy/Dewings may not have submitted).
+- Re-run **Prepare → review → render → archive** (API credits now active).
 
-#### 2a — convertmd conversion
+### Phase 1 — Foundation: JSON store + Skill 1 (capture)
+- Prove inbox access (seam #1) before anything else.
+- Define the JSON schema (seam #5).
+- Build Skill 1: scan → summarize (≤3 sentences) → review/select → write JSON.
+- Wrap it in a daily schedule that nudges when there's a batch to review.
 
-For each file in `input/` (skip `.md` files, skip the `Org/` subfolder):
+### Phase 2 — Skill 2 (outbound tagged reminders)
+- Draft per-encourager, ministry-tagged emails (see MT→ministry map in the
+  `ministry-structure` memory). Land on "draft, Dennis sends."
+- Optionally make the email a relational touchpoint (acknowledge last month's
+  contribution → reinforces ownership).
 
-1. Run `convertmd <file>` as a subprocess.
-2. On success: move the original file into `input/Org/` (create if needed).
-3. On failure: log the error to `input/error.log` (append, timestamped), leave
-   the file in place, set an error flag (see 2c).
+### Phase 3 — Assembly app (JSON → dated .md)
+- Harvest the target month's selected requests → dated `.md` using the existing
+  template + macros. Each ministry's requests become the `@prayer()` bullets
+  (the flexible unlabeled-slot behavior already supports this).
 
-#### 2b — File rename
+### Phase 4 — Close-out email
+- Draft office email (done + PDF attached), CC the MT; then archive.
 
-After conversion, rename each `.md` file in `input/` (excluding `Org/`).
-Identification uses a two-tier strategy:
-
-1. **`known_senders.json` lookup** — a JSON file mapping lowercase text
-   patterns (e.g., `"midwest indian mission"`, `"lsi"`) to `{"org": "...",
-   "sender": "..."}` objects. The file content is scanned for each key
-   (longest-first). This handles the recurring ~8 missionaries with zero
-   API cost. Edit this file to add new contacts or correct misidentifications.
-
-2. **Claude Haiku fallback** — if no known sender matches, a
-   `claude-haiku-4-5` API call reads the first ~2000 words and returns the
-   org name (CamelCase) and sender name (LastFirst). Cheap and fast, handles
-   new/unexpected files intelligently.
-
-**Output filename format:**
-```
-OrganizationName_LastFirst_YYYYMM.md
-```
-
-**Failure handling:** If either field cannot be determined by either method,
-the file is not renamed, the failure is logged to `input/error.log`, and the
-error flag is set.
-
-#### 2c — Error flag in GUI
-
-Red label below the button row. Appears when `run_convert()` reports errors.
-Clears when a new conversion run starts.
+### Phase 5 — Retire the brittle front half
+- Remove/replace `lib/convert.py` substring identification and `lib/prepare.py`
+  fuzzy matching once capture-and-curate is proven. Keep render + archive.
 
 ---
 
-### Phase 3 — Step 3: Prepare Document (Complete)
+## What stays regardless
 
-Implemented section matching and per-section Claude calls in `lib/prepare.py`.
-
-#### 3a — Section matching
-
-Matching normalizes both the `OrganizationName` from input filenames and the
-`@missionary_section()` / `@title()` macro arguments: CamelCase splitting, lowercase, alpha-only tokens. Matching
-uses token overlap with prefix support (minimum 3-character prefix). Best-
-scoring section wins when multiple could match. A section may match zero, one,
-or multiple input files. Unmatched files are logged as warnings.
-
-#### 3b — Claude call per section
-
-- If **one or more** input files matched: concatenate their content and send
-  one `claude-opus-4-6` API call with the section text + matched source material.
-- If **no input files matched**: retain the `[CONTENT NEEDED]` placeholder
-  and log: `  Missing input: {heading} — marked for manual review`.
-
-#### 3c — Reassembly
-
-header + filled sections (with preserved divs/page-breaks) + footer →
-`{YYYYMM}_ssPrayerTime.md`.
-
----
-
-### Phase 4 — GUI: rapumamd Button (Complete)
-
-Added "Open in rapumamd" button between Spellcheck and Archive. Launches
-`rapumamd` via `subprocess.Popen` pointed at the current month's `.md` file.
-No state tracking — user clicks it as many times as needed for review and
-final rendering.
-
----
-
-### Phase 5 — Integration Testing (Complete)
-
-| Step | Test | Result |
-|------|------|--------|
-| 1 | GUI launches, month entry defaults to current month, invalid entry shows error | Pass |
-| 2 | Requires manual testing with real files and `convertmd` | Manual |
-| 3 | Template splits into 8 sections; matching handles single/multiple files per section; unmatched sections retain `[CONTENT NEEDED]` | Pass |
-| 4 | "Open in rapumamd" button present in correct position | Pass |
-| 5 | Spellcheck flags real misspellings; church names in `wordlist.txt` pass clean | Pass |
-| 6 | Same button as Step 4 | Pass |
-| 7 | Archive zips `.md`, `.pdf`, and `input/` files; deletes originals | Pass |
-
----
-
-## Key Constraints
-
-- Do not break the threading model. All `run_*` functions take a `log`
-  callback and must never call tkinter directly.
-- Preserve `parse_date()`, `md_path()`, `pdf_path()`, `load_env()`, and the
-  `App` class structure.
-- All file conversion goes through system-wide `convertmd` — do not add
-  built-in file readers.
-- The `[CONTENT NEEDED]` placeholder that follows each `@prayer()` macro call on
-  the same line is the signal for missing/unfilled sections — do not change it.
-
----
-
-## Key Files
-
-| File | Purpose |
-|------|---------|
-| `prayer_sheet.py` | GUI entry point — imports from `lib/` |
-| `lib/convert.py` | Step 2: convertmd conversion, rename, error logging |
-| `lib/prepare.py` | Step 3: template split, section matching, Claude calls |
-| `lib/spellcheck.py` | Step 5: aspell via pandoc |
-| `lib/archive.py` | Step 7: zip and cleanup |
-| `template_ssPrayerTime.md` | Master template — sections delimited by `@missionary_section()` macros |
-| `macros.py` | Project-local RapumaMD macros (missionary_section, end_missionary_section, title_section, end_title_section, missionary, prayer, title) |
-| `known_senders.json` | Lookup table: text patterns → org/sender names for file rename |
-| `wordlist.txt` | Custom aspell dictionary (church names, acronyms) |
-| `.env` | `ANTHROPIC_API_KEY=...` — never commit |
-| `QR_Codes/` | PNG QR images referenced by `<img>` tags in template |
-| `input/` | Monthly source files; `Org/` subfolder holds originals post-conversion |
-| `input/error.log` | Appended on any conversion or rename failure |
-| `archive/` | Completed monthly zips |
-
----
-
-## Dependencies
-
-System: `python3`, `python3-tk`, `pandoc`, `aspell`, `aspell-en`, `convertmd`,
-`rapumamd`
-
-Python (in `.venv/`): `anthropic`
-
-```bash
-python3 -m venv .venv
-.venv/bin/pip install anthropic
-```
-
----
-
-## Known Issues / Planned Work
-
-### Life Source post-footer section — resolved
-
-Previously the Life Source block used the legacy `@title(...)` heading +
-`<img class="qr-code">` floating QR pattern, suffering the same paragraph-width
-inconsistency (`\wrapfigure` narrow-then-snap) the two-column migration fixed
-elsewhere.
-
-Resolved by adding a `@title_section(text, qr_path)` / `@end_title_section()`
-macro pair (`macros.py`) that reuses the same uniform-width two-column minipage
-layout as `@missionary_section`, but renders the heading as a centered styled
-title (matching the `@title(...)` look) instead of a `\subsection*`. The
-splitter and matcher in `lib/prepare.py` recognize `@title_section` as a
-post-footer section delimiter alongside `@title`. Verified rendering clean to
-PDF.
-
-No remaining known issues.
+`template_ssPrayerTime.md`, `macros.py` (incl. the two-column section macros
+and the labeled-vs-unlabeled `@prayer()` behavior), the RapumaMD render path,
+and the archive step all survive the redesign and feed the assembly/close-out
+stages. The `mtps` GUI may evolve into the assembly/review front-end rather
+than disappear.
