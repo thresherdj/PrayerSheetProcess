@@ -143,10 +143,31 @@ cleanup of the misfiled input:
 
 ---
 
+## Known layout issue — QR float and right-margin overflow
+
+The section macros (`missionary_section` / `title_section`) float the QR
+top-right via `wrapfig` so body text flows around it and sections can break
+across pages (this is what got the June sheet from 5 → 4 pages). The cost:
+`wrapfig` mis-measures the occasional line where bulleted text meets the
+float, setting it *wider than the text block* so it pokes into the right
+margin. This is **not** fixable by justification settings — confirmed that
+`\emergencystretch`, `\sloppy`, and an explicit `wrapfigure[N]` line count all
+fail, because the line's target width itself is wrong, not the spacing. For
+June 2026 the two offending lines were cleared by lightly tightening the
+bullets (also serves "concise").
+
+**Proper fix (assembly/layout work in the refactor, not a quick patch):** lay
+sections out so body text never wraps around the QR — e.g. QR in a top band
+beside the heading/description with the bullets full-width below, or QR in the
+right margin. Either keeps sections breakable (no 5-page whitespace) *and*
+removes the overflow. Until then, tightening a bullet is the workaround.
+
+---
+
 ## What stays regardless
 
-`template_ssPrayerTime.md`, `macros.py` (incl. the two-column section macros
-and the labeled-vs-unlabeled `@prayer()` behavior), the RapumaMD render path,
-and the archive step all survive the redesign and feed the assembly/close-out
-stages. The `mtps` GUI may evolve into the assembly/review front-end rather
-than disappear.
+`template_ssPrayerTime.md`, `macros.py` (the floated-QR breakable section
+macros and the labeled-vs-unlabeled `@prayer()` behavior), the RapumaMD render
+path, and the archive step all survive the redesign and feed the
+assembly/close-out stages. The `mtps` GUI may evolve into the assembly/review
+front-end rather than disappear.
