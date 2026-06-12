@@ -113,7 +113,10 @@ value.
    fallback: Dennis invokes `/capture` manually with morning coffee.
 4. **Review/select UX** — the one genuinely new surface; design carefully.
    v1 plan: conversational — skill presents distilled candidates, Dennis
-   keeps/drops/edits in the chat, keepers written to JSON.
+   keeps/drops/edits in the chat, keepers written to JSON. **Decided
+   2026-06-12: capture and review are decoupled** — capture runs daily and
+   accumulates a pending queue; review is unscheduled, on Dennis's own time,
+   at least weekly.
 5. **JSON schema** — the contract between capture and assembly: ministry key,
    ≤3-sentence summary, source/sender, date received, target month, status
    (`pending`/`selected`/`used`/`archived`).
@@ -150,8 +153,9 @@ sheet assembles 2026-07-04 for first-Sunday 2026-07-05).
 ### Phase 2 — Skill 2 (outbound tagged reminders)
 - Draft per-encourager, ministry-tagged emails (see MT→ministry map in the
   `ministry-structure` memory). Land on "draft, Dennis sends."
-- Optionally make the email a relational touchpoint (acknowledge last month's
-  contribution → reinforces ownership).
+- **Decided 2026-06-12: content stays somewhat generic** — per-person
+  addressing + ministry tag, but no deep personalization; anything personal
+  is Dennis's to add by hand before sending.
 
 ### Phase 3 — Assembly app (JSON → dated .md)
 - Harvest the target month's selected requests → dated `.md` using the existing
