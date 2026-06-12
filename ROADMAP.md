@@ -85,16 +85,35 @@ value.
 
 ### Seams to validate (by risk)
 
-1. **Inbox read access — the keystone, prove first.** Which account
-   (submissions appear to land at a Gmail, `dd86.coin@gmail.com`) and how a
-   skill reaches it. Gmail tools incl. draft creation are available in the
-   Claude environment, but the account must be connected. Fallback: local IMAP.
-2. **Email send + PDF attachment.** Drafting is likely; autonomous *send* and
-   *attach* are uncertain → probably lands as "Claude drafts, Dennis sends,"
-   which is also the right human checkpoint for mail to the team/office.
+1. **Inbox read access — ✅ PROVEN (tested live 2026-06-12).** The Gmail MCP in
+   Claude Code is connected to the right account (`dd86.coin@gmail.com`).
+   Validated against real June traffic:
+   - `search_threads` full Gmail query syntax works. **Quirk:** `label:`
+     queries need the label *name* (`label:pgcc-missions`), not the ID — ID
+     queries silently return empty, despite what the tool doc says.
+   - `get_thread` (FULL_CONTENT) returns complete plaintext bodies — all June
+     reminder replies (Katie/FW, TenPas/LSI, Schermer/Rock) fully readable.
+   - Replies thread onto Dennis's own reminder email, so one search on the
+     reminder subject retrieves the whole month's submissions.
+   - Org mail converges into this inbox via the protonmail forwards.
+   - The `PGCC/Missions` label is consistent but broad (budget, reimbursements,
+     events) — filter by known team senders + reminder thread, label secondary.
+   - **The one gap: attachments.** `get_thread` lists them (filename/mimeType/
+     id) but the MCP has *no download tool*. Kathy's OCC submission is a bare
+     "Attached!" + `.docx`; Life Source also sends `.docx`. v1 = detect and
+     nudge Dennis to drop the file; fast-follow = local Gmail-API/IMAP fetch by
+     message id piped through `convertmd`. (rclone's Google grant is Drive-only
+     — no help here.)
+2. **Email send + PDF attachment.** `create_draft` confirmed available; no send
+   tool → lands as "Claude drafts, Dennis sends," which is also the right human
+   checkpoint for mail to the team/office.
 3. **Two scheduled triggers** — the daily capture run and the "day before the
-   first Sunday" assembly (needs first-Sunday date math).
+   first Sunday" assembly (needs first-Sunday date math). Still unproven:
+   whether a scheduled run has access to the Gmail connection. Acceptable
+   fallback: Dennis invokes `/capture` manually with morning coffee.
 4. **Review/select UX** — the one genuinely new surface; design carefully.
+   v1 plan: conversational — skill presents distilled candidates, Dennis
+   keeps/drops/edits in the chat, keepers written to JSON.
 5. **JSON schema** — the contract between capture and assembly: ministry key,
    ≤3-sentence summary, source/sender, date received, target month, status
    (`pending`/`selected`/`used`/`archived`).
@@ -103,25 +122,30 @@ value.
 
 ## Phased plan
 
-### Phase 0 — Get June out by brute force (current tool) — NEXT SESSION
-The new system isn't built, so this month uses the existing tool with manual
-cleanup of the misfiled input:
-- In the work folder's `input/`, **re-sort the misfiled files** to the correct
-  ministry (read each one's `From:`/content, ignore the bad labels). Known bad:
-  the FW/Kusilek email mislabeled `MidwestIndianMission_DewingDon`; several
-  "Re: reminder" replies mislabeled `LivingStonesInternational`; one in
-  `RockInternational`.
-- **Remove non-submissions** (the bare "Mission Team Prayer Sheet Reminder" /
-  "Updates Welcome" emails with no requests) and the dropped **Giles** file.
-- Confirm each of the seven has its real material (or is knowingly empty —
-  e.g. Roy/Dewings may not have submitted).
-- Re-run **Prepare → review → render → archive** (API credits now active).
+### Phase 0 — Get June out by brute force (current tool) — ✅ DONE 2026-06-06
+June 2026 shipped on the existing tool after manual cleanup of the misfiled
+input. `202606_ssPrayerTime.zip` is in the archive; the sheet went to the
+office (CC the MT) on 2026-06-06. Leftover cleanup: an untracked `June/`
+work-folder copy sits in this repo, and the configured `work_dir` still holds
+superseded June files — both are duplicates of the archive zip, safe to delete.
 
-### Phase 1 — Foundation: JSON store + Skill 1 (capture)
-- Prove inbox access (seam #1) before anything else.
-- Define the JSON schema (seam #5).
-- Build Skill 1: scan → summarize (≤3 sentences) → review/select → write JSON.
-- Wrap it in a daily schedule that nudges when there's a batch to review.
+### Phase 1 — Foundation: JSON store + Skill 1 (capture) — NEXT UP
+Seam #1 is proven (see above); estimate ~3 working sessions. Target: capturing
+live before the July reminder replies start (~Sat 2026-06-27 reminder; July
+sheet assembles 2026-07-04 for first-Sunday 2026-07-05).
+
+- **Session 1 — schema + working skeleton.** Define the JSON schema (seam #5).
+  Write the skill: search inbox → pull bodies → distill ≤3 sentences per
+  request → present for review → write keepers to the JSON store. Tune it
+  against the June mail still in the inbox (perfect test corpus — known-good
+  output exists in the June archive to compare against).
+- **Session 2 — state + edge cases.** Seen-message-IDs file so daily runs
+  don't re-present triaged mail; attachment detect-and-nudge (Kathy's .docx);
+  skip non-submissions (calendar acceptances, bare thank-yous); requests
+  arriving mid-month tagged for the *next* sheet.
+- **Session 3 — the trigger (time-boxed).** Try the daily scheduled run
+  (seam #3, the only unproven piece). If a scheduled agent can't reach the
+  Gmail connection, accept manual `/capture` as v1 without grief.
 
 ### Phase 2 — Skill 2 (outbound tagged reminders)
 - Draft per-encourager, ministry-tagged emails (see MT→ministry map in the
