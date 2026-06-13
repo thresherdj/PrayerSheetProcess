@@ -88,6 +88,10 @@ processed so nothing is presented twice.
 remember your phrasing style and adapt, or stay neutral and let you edit
 each time?
 
+**Answers** 
+- It can have my "voice", I have a file with that info.
+- I would like to have a simple website built for the interface and storage of the prayer requests. Skill 1 would collect, distill and push the requests to the site where they would be stored waiting for me to review them. Skill 1 would notify me when ever requests are pushed to the site.
+
 ## Feature 2 — Skill 2: Outbound reminders
 
 **What it does:** Drafts one reminder email *per encourager*, addressed
@@ -112,6 +116,9 @@ Wilderness, Dave→Living Stones, Kathy→OCC, Roy→Dewings/Midwest Indian
 Mission, Sarah→?, and you cover Schermers/ROCK, WILD, and Life Source
 directly. Is that current and complete?
 
+**Answers**
+- Yes, that map is correct. In addition, I would like to have that information accessible in the website interface so it can be edited if necessary. 
+
 ## Feature 3 — The JSON store
 
 **What it does:** The single source of truth between capture and assembly.
@@ -128,6 +135,10 @@ source/sender, date received, target month, and status
 
 **Question for you:** Should unused-but-still-valid requests carry over as
 candidates for next month (marked as held over), or expire by default?
+
+**Answers**
+- I would say have the requests expire by default.
+- Using JSON to store data in the website would not be a necessity. Another format could be used if it's more conducive in that environment. However, when data is pulled from the site by another Skill or app, it probably needs to be exported in .json. 
 
 ## Feature 4 — Assembly app
 
@@ -153,6 +164,9 @@ macros, and RapumaMD render path. You review the `.md`, tweak, render to PDF.
 **Question for you:** Does the `mtps` GUI evolve into this assembly
 front-end, or does assembly become a skill/command too and the GUI retires?
 
+**Answers**
+- I think it should be a GUI. I think at this point an app could do that rest. The collecting and editing have been done already by a Skill so all that needs to be done at this point in the process is some format tweaking on the document.  
+
 ## Feature 5 — Process-keeper behaviors
 
 **What it does:** Tracks the monthly arc (reminders sent → submissions
@@ -171,6 +185,9 @@ checklist keeping the month on track, not a nag.
 when you happen to open it is the easy version; anything more (email to
 yourself, scheduled run that pings) depends on the scheduling seam, which is
 still unproven.
+
+**Answers**
+- I'd prefer scheduled pings if that can work, otherwise email nudges would be ok.
 
 ## Feature 6 — Close-out
 
@@ -201,3 +218,15 @@ close-out, then retire the old front half.
 ---
 
 *Notes / corrections:*
+
+**Resolution (2026-06-12, after review):** All answers above accepted and
+folded into ROADMAP.md. The website moves to its own phase (Phase 6) after
+the core system ships — July stays on the 3-session file-backed plan, with
+the schema designed website-ready from day one: a `display` flag
+(`public-ok`/`private`, per-ministry defaults — LSI private) for the future
+hallway display, the encourager map kept as data, and the store behind a
+small interface so the Pi backend can replace it without touching capture.
+Both Pis stay on a private network (Tailscale), display pulls only flagged
+records. Unused requests expire by default. Review v1 is conversational —
+numbered pending items with keep/drop/edit/show-source replies — and is the
+same flow the future web page re-skins.

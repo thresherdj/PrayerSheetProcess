@@ -119,7 +119,11 @@ value.
    at least weekly.
 5. **JSON schema** — the contract between capture and assembly: ministry key,
    ≤3-sentence summary, source/sender, date received, target month, status
-   (`pending`/`selected`/`used`/`archived`).
+   (`pending`/`selected`/`used`/`archived`), and a **`display` flag**
+   (`public-ok`/`private`, defaulted per ministry — LSI private, others
+   public-ok, overridable at review). The flag is inert in v1 but must exist
+   from day one for the future hallway-display idea (see Phase 6).
+   Unused-but-valid requests **expire by default** (decided 2026-06-12).
 
 ---
 
@@ -137,11 +141,13 @@ Seam #1 is proven (see above); estimate ~3 working sessions. Target: capturing
 live before the July reminder replies start (~Sat 2026-06-27 reminder; July
 sheet assembles 2026-07-04 for first-Sunday 2026-07-05).
 
-- **Session 1 — schema + working skeleton.** Define the JSON schema (seam #5).
-  Write the skill: search inbox → pull bodies → distill ≤3 sentences per
-  request → present for review → write keepers to the JSON store. Tune it
-  against the June mail still in the inbox (perfect test corpus — known-good
-  output exists in the June archive to compare against).
+- **Session 1 — schema + working skeleton.** Define the JSON schema (seam #5,
+  incl. the display flag + per-ministry defaults; store behind a small
+  interface so the Phase 6 website can replace the backend). Write the skill:
+  search inbox → pull bodies → distill ≤3 sentences per request (in Dennis's
+  voice — he has a voice file; get its path) → present for review → write
+  keepers to the JSON store. Tune it against the June mail still in the inbox
+  (perfect test corpus — known-good output exists in the June archive).
 - **Session 2 — state + edge cases.** Seen-message-IDs file so daily runs
   don't re-present triaged mail; attachment detect-and-nudge (Kathy's .docx);
   skip non-submissions (calendar acceptances, bare thank-yous); requests
@@ -168,6 +174,27 @@ sheet assembles 2026-07-04 for first-Sunday 2026-07-05).
 ### Phase 5 — Retire the brittle front half
 - Remove/replace `lib/convert.py` substring identification and `lib/prepare.py`
   fuzzy matching once capture-and-curate is proven. Keep render + archive.
+
+### Phase 6 — Website on the Pi 5 (deferred 2026-06-12 to keep July on track)
+Dennis runs a Pi 5 with another web app already; the prayer-request store and
+review surface eventually move there:
+- Capture pushes distilled requests to the site; the site notifies Dennis;
+  review happens in the browser (the conversational review flow re-skinned as
+  a page — same header/status, numbered items become cards with
+  keep/drop/edit). Better fit for "unscheduled, at least weekly" review.
+- Encourager→ministry map editable in the site UI.
+- Internal storage format is the site's choice (SQLite natural); exports to
+  JSON when pulled by a skill/app — the assembly contract doesn't change.
+- **Private network only** — LAN/Tailscale between Dennis's Pi and a future
+  church Pi; no open ports, no public exposure. Prayer requests can be
+  sensitive (LSI names people in hiding).
+- **Far future:** a church Pi *pulls* current requests over the private link
+  and displays them on a hallway screen for congregational awareness — only
+  records flagged `display: public-ok`. Pull-only direction (church Pi
+  reaches out; nothing pushes to it).
+
+To keep this swap cheap, Phase 1 hides the store behind a small interface and
+designs the schema website-ready (display flag, map as data).
 
 ---
 
