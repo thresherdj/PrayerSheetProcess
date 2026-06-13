@@ -141,18 +141,25 @@ Seam #1 is proven (see above); estimate ~3 working sessions. Target: capturing
 live before the July reminder replies start (~Sat 2026-06-27 reminder; July
 sheet assembles 2026-07-04 for first-Sunday 2026-07-05).
 
-- **Session 1 — schema + working skeleton.** Define the JSON schema (seam #5,
-  incl. the display flag + per-ministry defaults; store behind a small
-  interface so the Phase 6 website can replace the backend). Write the skill:
-  search inbox → pull bodies → distill ≤3 sentences per request (in Dennis's
-  voice — profile at
-  `~/Claude/3_Dennis/Branding/Brand Context/voice-profile.md`) → present for
-  review → write keepers to the JSON store. Tune it against the June mail still in the inbox
-  (perfect test corpus — known-good output exists in the June archive).
-- **Session 2 — state + edge cases.** Seen-message-IDs file so daily runs
-  don't re-present triaged mail; attachment detect-and-nudge (Kathy's .docx);
-  skip non-submissions (calendar acceptances, bare thank-yous); requests
-  arriving mid-month tagged for the *next* sheet.
+- **Session 1 — schema + working skeleton. ✅ DONE 2026-06-12.** Built:
+  `ministries.json` (seven ministries: molds, shapes, display defaults,
+  encourager map — the data the Phase 6 site will edit), `lib/store.py`
+  (schema + CLI: add/list/set/mark-seen/check-seen/expire/status/harvest;
+  store lives in `{work_dir}/capture/`; first-Sunday target-month math;
+  per-ministry display defaults, unknown→private), and two skills:
+  `.claude/skills/ps-capture` and `.claude/skills/ps-review`. Tuned against
+  the live June corpus: all 5 real submissions correctly identified, all 14
+  non-submissions correctly excluded (the exact failure mode of the old
+  pipeline), and the store is seeded with 5 real pending July items (2 WILD,
+  3 Stephanie Heise guest entries, private). Voice profile:
+  `~/Claude/3_Dennis/Branding/Brand Context/voice-profile.md`.
+- **Session 2 — state + edge cases.** Much landed early in Session 1
+  (seen-IDs dedup, attachment detect-and-nudge, non-submission skipping,
+  next-month tagging are all in the store/skills). Remaining: exercise
+  `/ps-review` end-to-end with Dennis, harden anything the first real review
+  exposes, and decide handling for org mail that only reaches protonmail
+  (Dennis must forward it to dd86.coin for capture to see it — e.g. LSI
+  Prayer Alerts and Life Source lists were hand-exported .emls in June).
 - **Session 3 — the trigger (time-boxed).** Try the daily scheduled run
   (seam #3, the only unproven piece). If a scheduled agent can't reach the
   Gmail connection, accept manual `/capture` as v1 without grief.

@@ -1,0 +1,87 @@
+{
+  "_comment": "Canonical ministry data for the capture-and-curate system. Molds: A = person/couple with a few prayer points; B = org with named missionaries, one sub-point per person; C = org prayed for as a body. display_default seeds each captured request's display flag (for the future hallway display); 'private' is never shown on a public screen. This file is the editable encourager map the Phase 6 website will surface.",
+  "ministries": {
+    "midwest_indian_mission": {
+      "name": "Don & Teleka Dewing",
+      "org": "Midwest Indian Mission",
+      "template_org": "MidwestIndianMission",
+      "mold": "A",
+      "shape": "The couple is the prayer subject. Compress the sub-ministries (chapels, youth, shelter, food pantry) into context - never one bullet per sub-ministry.",
+      "display_default": "public-ok",
+      "encourager": { "name": "Roy Acuna", "email": "royacuna@hotmail.com" },
+      "known_senders": []
+    },
+    "living_stones": {
+      "name": "Dr. Pat",
+      "org": "Living Stones International",
+      "template_org": "LivingStonesInternational",
+      "mold": "A",
+      "shape": "Individual missionary. Requests often concern persecuted believers - keep names/pseudonyms exactly as given, never add identifying detail.",
+      "display_default": "private",
+      "encourager": { "name": "David TenPas", "email": "tenpasdavid@gmail.com" },
+      "known_senders": []
+    },
+    "fort_wilderness": {
+      "name": "Fort Wilderness",
+      "org": "Fort Wilderness",
+      "template_org": "FortWilderness",
+      "mold": "B",
+      "shape": "Org with named missionaries prayed for one by one: Jonathan & Dyane Brood, Steve & Lisa Siefert, Katie Kusilek, Janet Merkel, Torgerson. One sub-point per person/couple with a current request.",
+      "display_default": "public-ok",
+      "encourager": { "name": "Katie Kusilek", "email": "katiekusilek@gmail.com" },
+      "known_senders": []
+    },
+    "occ": {
+      "name": "Operation Christmas Child",
+      "org": "Samaritan's Purse",
+      "template_org": "OperationChristmasChild",
+      "mold": "C",
+      "shape": "Org prayed for as a body. Kathy typically submits a monthly .docx attachment (e.g. 'June OCC Prayers').",
+      "display_default": "public-ok",
+      "encourager": { "name": "Kathy Winkler", "email": "jkwinkmail@gmail.com" },
+      "known_senders": []
+    },
+    "rock_international": {
+      "name": "Dennis & Linda Schermer",
+      "org": "ROCK International",
+      "template_org": "RockInternational",
+      "mold": "A",
+      "shape": "Couple. Dennis covers this ministry directly; the Schermers reply to his check-in emails themselves.",
+      "display_default": "public-ok",
+      "encourager": { "name": "Dennis Drescher", "email": "dd86.coin@gmail.com" },
+      "known_senders": ["scherm89@gmail.com"]
+    },
+    "wild": {
+      "name": "WILD",
+      "org": "WILD Ministries",
+      "template_org": "Wild",
+      "mold": "C",
+      "shape": "Org prayed for as a body. Material arrives as WILD newsletter/prayer emails forwarded by Dennis (subject like 'WILD Prayer ...').",
+      "display_default": "public-ok",
+      "encourager": { "name": "Dennis Drescher", "email": "dd86.coin@gmail.com" },
+      "known_senders": []
+    },
+    "life_source": {
+      "name": "Life Source Ministries",
+      "org": "Life Source",
+      "template_org": "LifeSource",
+      "mold": "C",
+      "shape": "Org prayed for as a body. Sends monthly prayer lists, sometimes as .docx attachments.",
+      "display_default": "public-ok",
+      "encourager": { "name": "Dennis Drescher", "email": "dd86.coin@gmail.com" },
+      "known_senders": []
+    }
+  },
+  "team": [
+    { "name": "Katie Kusilek", "email": "katiekusilek@gmail.com" },
+    { "name": "David TenPas", "email": "tenpasdavid@gmail.com" },
+    { "name": "Kathy Winkler", "email": "jkwinkmail@gmail.com" },
+    { "name": "Roy Acuna", "email": "royacuna@hotmail.com" },
+    { "name": "Sarah Rose", "email": "akredeemed137@gmail.com" }
+  ],
+  "self_addresses": ["dd86.coin@gmail.com"],
+  "forward_addresses": [
+    "dd86.lists@protonmail.com",
+    "dennis.drescher.86@protonmail.com"
+  ]
+}
