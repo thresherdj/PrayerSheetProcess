@@ -237,6 +237,19 @@ def cmd_status(args):
             print(f"  - {e}")
 
 
+def cmd_schedule(args):
+    """The month's key dates as JSON - shared by reminders and assembly."""
+    month = args.month or default_target_month()
+    y, m = map(int, month.split("-"))
+    fs = first_sunday(y, m)
+    print(json.dumps({
+        "target_month": month,
+        "first_sunday": str(fs),
+        "assembly_day": str(fs - dt.timedelta(days=1)),     # Saturday
+        "submission_deadline": str(fs - dt.timedelta(days=2)),  # Friday
+    }, indent=2))
+
+
 def cmd_harvest(args):
     """Selected records for a month, grouped by ministry - assembly contract."""
     month = args.month or default_target_month()
@@ -295,6 +308,10 @@ def main(argv=None):
     a = sub.add_parser("status", help="per-ministry overview for the target month")
     a.add_argument("--month")
     a.set_defaults(fn=cmd_status)
+
+    a = sub.add_parser("schedule", help="target month + assembly/deadline dates")
+    a.add_argument("--month")
+    a.set_defaults(fn=cmd_schedule)
 
     a = sub.add_parser("harvest", help="selected records for a month (assembly JSON)")
     a.add_argument("--month")
