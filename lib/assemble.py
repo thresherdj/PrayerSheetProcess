@@ -180,9 +180,19 @@ def run_assemble(code: str, log, work_dir: Path):
     if footer:
         parts.append(footer)
     parts.extend(filled[num_pre:])
-    md_out.write_text("\n".join(parts))
+    result = "\n".join(parts)
 
-    log(f"Done: {md_out.name}")
+    # Stamp the TARGET month into the title. The template uses rapumamd's
+    # @today() built-in, which renders the *build* date — wrong now that the
+    # sheet can be assembled weeks before its month. Fill it like a slot.
+    import datetime as dt
+    target = dt.date(int(code[:4]), int(code[4:]), 1)
+    result = (result
+              .replace("@today(M)", target.strftime("%B"))
+              .replace("@today(Y)", target.strftime("%Y")))
+    md_out.write_text(result)
+
+    log(f"Done: {md_out.name}  (titled {target.strftime('%B %Y')})")
     log(f"Next: open and edit {md_out.name}, then Review / PDF to render.")
 
 
