@@ -34,7 +34,7 @@ Life Source on his own.
 
 A team member on the roster with **no** ministry assignment gets **no**
 draft — flag them in the report so Dennis can assign or confirm they're
-inactive. (As of build, Sarah Rose is unassigned.)
+inactive.
 
 **3. Default content — somewhat generic (decided 2026-06-12).** Per-person
 address and a ministry tag, but no deep personalization. Anything personal
