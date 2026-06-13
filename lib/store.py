@@ -212,7 +212,9 @@ def cmd_expire(args):
 def cmd_status(args):
     month = args.month or default_target_month()
     ministries = load_ministries()["ministries"]
-    records = [r for r in load_requests() if r["target_month"] == month]
+    dead = ("dropped", "expired")
+    records = [r for r in load_requests()
+               if r["target_month"] == month and r["status"] not in dead]
     print(f"Target month: {month} "
           f"(assembly day: {first_sunday(*map(int, month.split('-'))) - dt.timedelta(days=1)})")
     empty = []
