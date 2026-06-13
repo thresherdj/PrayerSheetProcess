@@ -145,8 +145,9 @@ sheet assembles 2026-07-04 for first-Sunday 2026-07-05).
   incl. the display flag + per-ministry defaults; store behind a small
   interface so the Phase 6 website can replace the backend). Write the skill:
   search inbox → pull bodies → distill ≤3 sentences per request (in Dennis's
-  voice — he has a voice file; get its path) → present for review → write
-  keepers to the JSON store. Tune it against the June mail still in the inbox
+  voice — profile at
+  `~/Claude/3_Dennis/Branding/Brand Context/voice-profile.md`) → present for
+  review → write keepers to the JSON store. Tune it against the June mail still in the inbox
   (perfect test corpus — known-good output exists in the June archive).
 - **Session 2 — state + edge cases.** Seen-message-IDs file so daily runs
   don't re-present triaged mail; attachment detect-and-nudge (Kathy's .docx);
