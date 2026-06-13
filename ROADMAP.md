@@ -164,17 +164,28 @@ sheet assembles 2026-07-04 for first-Sunday 2026-07-05).
   (seam #3, the only unproven piece). If a scheduled agent can't reach the
   Gmail connection, accept manual `/capture` as v1 without grief.
 
-### Phase 2 — Skill 2 (outbound tagged reminders)
-- Draft per-encourager, ministry-tagged emails (see MT→ministry map in the
-  `ministry-structure` memory). Land on "draft, Dennis sends."
-- **Decided 2026-06-12: content stays somewhat generic** — per-person
-  addressing + ministry tag, but no deep personalization; anything personal
-  is Dennis's to add by hand before sending.
+### Phase 2 — Skill 2 (outbound tagged reminders) — ✅ DONE 2026-06-12
+Built `.claude/skills/ps-remind`: one personal, ministry-tagged Gmail draft
+per encourager; dry-run-then-create; Claude drafts, Dennis sends. Content is
+**somewhat generic** (per-person + ministry tag, no deep personalization;
+personal touches are Dennis's to add). Resolved the encourager map:
+**Sarah Rose → Life Source** (not officially MT, but on the sheet). Added
+`store.py schedule` (target month + assembly day + submission deadline).
+Dry-run approved; will run for real ~last Saturday of June.
 
-### Phase 3 — Assembly app (JSON → dated .md)
-- Harvest the target month's selected requests → dated `.md` using the existing
-  template + macros. Each ministry's requests become the `@prayer()` bullets
-  (the flexible unlabeled-slot behavior already supports this).
+### Phase 3 — Assembly app (JSON → dated .md) — ✅ DONE 2026-06-12
+Built `lib/assemble.py` (`run_assemble(code, log, work_dir)`, also a CLI):
+harvest the month's SELECTED requests → match each template section to a
+ministry → fill `@prayer()` slots → reassemble (footer-aware) → write the
+dated `.md`. Read-only on the store, so re-runnable. Slot filling handles
+all three molds: flexible `@prayer()` slots (A/C) expand one bullet per
+request; labeled slots (B, Fort Wilderness) route by a new optional store
+`label` field, with "No new requests this month" for unmatched names.
+Section→ministry matching reuses `prepare._normalize`; WILD needed
+un-deduped target tokens to clear the threshold (template spells out the
+acronym). Wired into the GUI as the new primary **1. Assemble** button;
+Convert/Prepare demoted to a "Legacy" row (retire in Phase 5). Verified:
+real WILD data + synthetic mold-B data assemble and render to PDF.
 
 ### Phase 4 — Close-out email
 - Draft office email (done + PDF attached), CC the MT; then archive.

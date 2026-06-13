@@ -32,6 +32,7 @@ from pathlib import Path
 from lib.config import load_config, save_config
 from lib.convert import run_convert
 from lib.prepare import run_prepare
+from lib.assemble import run_assemble
 from lib.spellcheck import run_spellcheck
 from lib.archive import run_archive
 
@@ -146,17 +147,24 @@ class App(tk.Tk):
         btn_frame = tk.Frame(self)
         btn_frame.grid(row=3, column=0, columnspan=2, pady=8)
 
-        tk.Button(btn_frame, text="1. Convert Input", width=16,
-                  command=self._do_convert).pack(side="left", padx=6)
-        tk.Button(btn_frame, text="2. Prepare Document", width=18,
+        tk.Button(btn_frame, text="1. Assemble", width=13,
                   bg="#4a90d9", fg="white", font=("Helvetica", 10, "bold"),
-                  command=self._do_prepare).pack(side="left", padx=6)
-        tk.Button(btn_frame, text="3. Spellcheck", width=13,
+                  command=self._do_assemble).pack(side="left", padx=6)
+        tk.Button(btn_frame, text="2. Spellcheck", width=13,
                   command=self._do_spellcheck).pack(side="left", padx=6)
-        tk.Button(btn_frame, text="4. Review / PDF", width=15,
+        tk.Button(btn_frame, text="3. Review / PDF", width=15,
                   command=self._do_open_rapumamd).pack(side="left", padx=6)
-        tk.Button(btn_frame, text="5. Archive", width=11,
+        tk.Button(btn_frame, text="4. Archive", width=11,
                   command=self._do_archive).pack(side="left", padx=6)
+
+        # ── Legacy input pipeline (pre-capture flow; retiring in Phase 5) ──────
+        legacy = tk.Frame(self)
+        legacy.grid(row=4, column=0, columnspan=2, pady=(0, 4))
+        tk.Label(legacy, text="Legacy:", fg="#888").pack(side="left", padx=(12, 4))
+        tk.Button(legacy, text="Convert Input", width=14,
+                  command=self._do_convert).pack(side="left", padx=4)
+        tk.Button(legacy, text="Prepare (Claude)", width=16,
+                  command=self._do_prepare).pack(side="left", padx=4)
 
         # ── Error indicator ───────────────────────────────────────────────────
         self._error_var = tk.StringVar(value="")
@@ -164,16 +172,16 @@ class App(tk.Tk):
             self, textvariable=self._error_var,
             fg="red", font=("Helvetica", 10, "bold")
         )
-        self._error_label.grid(row=4, column=0, columnspan=2, pady=(0, 4))
+        self._error_label.grid(row=5, column=0, columnspan=2, pady=(0, 4))
 
         # ── Output area ───────────────────────────────────────────────────────
         tk.Label(self, text="Output:", anchor="w").grid(
-            row=5, column=0, columnspan=2, sticky="w", padx=12)
+            row=6, column=0, columnspan=2, sticky="w", padx=12)
         self._output = scrolledtext.ScrolledText(
             self, width=70, height=16, state="disabled",
             font=("Courier", 10), wrap="word"
         )
-        self._output.grid(row=6, column=0, columnspan=2, padx=12, pady=(0, 12))
+        self._output.grid(row=7, column=0, columnspan=2, padx=12, pady=(0, 12))
         self._output.tag_configure(
             "instruct",
             font=("Courier", 10, "bold"),
@@ -184,7 +192,7 @@ class App(tk.Tk):
 
         # ── Bottom buttons ────────────────────────────────────────────────────
         bottom = tk.Frame(self)
-        bottom.grid(row=7, column=0, columnspan=2, pady=(0, 12))
+        bottom.grid(row=8, column=0, columnspan=2, pady=(0, 12))
         tk.Button(bottom, text="Clear output",
                   command=self._clear_output).pack(side="left", padx=6)
         tk.Button(bottom, text="Close",
@@ -279,6 +287,11 @@ class App(tk.Tk):
         code = self._get_code()
         if code:
             self._spawn(run_prepare, code, self._log, WORK_DIR)
+
+    def _do_assemble(self):
+        code = self._get_code()
+        if code:
+            self._spawn(run_assemble, code, self._log, WORK_DIR)
 
     def _do_spellcheck(self):
         code = self._get_code()

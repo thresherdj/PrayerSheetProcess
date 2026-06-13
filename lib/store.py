@@ -134,6 +134,7 @@ def cmd_add(args):
         "target_month": args.target_month or default_target_month(),
         "status": args.status,
         "display": display,
+        "label": args.label or "",
         "note": args.note or "",
         "created": _now(),
         "updated": _now(),
@@ -170,6 +171,8 @@ def cmd_set(args):
                 r["ministry"] = args.ministry
             if args.target_month:
                 r["target_month"] = args.target_month
+            if args.label is not None:
+                r["label"] = args.label
             if args.note is not None:
                 r["note"] = args.note
             r["updated"] = _now()
@@ -275,6 +278,7 @@ def main(argv=None):
     a.add_argument("--target-month", dest="target_month", help="YYYY-MM")
     a.add_argument("--status", default="pending", choices=STATUSES)
     a.add_argument("--display", choices=DISPLAYS)
+    a.add_argument("--label", help="sub-person label for mold-B sections (e.g. 'Janet Merkel')")
     a.add_argument("--note")
     a.set_defaults(fn=cmd_add)
 
@@ -291,6 +295,7 @@ def main(argv=None):
     a.add_argument("--display", choices=DISPLAYS)
     a.add_argument("--ministry")
     a.add_argument("--target-month", dest="target_month")
+    a.add_argument("--label")
     a.add_argument("--note")
     a.set_defaults(fn=cmd_set)
 
