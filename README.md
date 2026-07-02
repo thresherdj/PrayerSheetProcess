@@ -60,7 +60,7 @@ into a formatted PDF ready for distribution.
 ## File Structure
 
 ```
-Production/
+app/
 ├── prayer_sheet.py              # GUI entry point
 ├── macros.py                    # Project-local RapumaMD macros
 ├── template_ssPrayerTime.md     # Master template — edit to change layout/structure

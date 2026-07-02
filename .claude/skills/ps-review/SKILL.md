@@ -10,7 +10,7 @@ and entirely his call — typical session is five minutes.
 
 ## Paths
 
-- Store CLI: `python3 /home/dennis/MakerSpace/CodingProjects/MissionaryPrayerSheet/Production/lib/store.py`
+- Store CLI: `python3 /home/dennis/MakerSpace/CodingProjects/MissionaryPrayerSheet/app/lib/store.py`
 - Ministry data: `ministries.json` in the same app dir
 
 ## Procedure

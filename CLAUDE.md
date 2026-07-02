@@ -53,7 +53,7 @@ newer macros (e.g. `@title_section`). Built-ins (`@hrule`, `@today`,
 
 ## Skills (capture-and-curate workflow)
 
-Three project skills under `Production/.claude/skills/` drive the monthly cycle:
+Three project skills under `app/.claude/skills/` drive the monthly cycle:
 `ps-remind` (draft per-encourager reminder emails), `ps-capture` (scan inbox →
 distill → hold as `pending`), and `ps-review` (human keep/drop/edit → `selected`).
 See `ROADMAP.md` for how they fit the redesign.
@@ -62,16 +62,16 @@ They are exposed **globally** via symlinks from `~/.claude/skills/<name>` → th
 project copies, so `/ps-capture`, `/ps-review`, and `/ps-remind` work from any
 Claude Code session regardless of launch directory (new sessions only — skills
 load at startup). **The project copies are the source of truth** — edit
-`Production/.claude/skills/<name>/SKILL.md` and the symlink reflects it with no
+`app/.claude/skills/<name>/SKILL.md` and the symlink reflects it with no
 re-sync. The skills use absolute paths, so they run correctly from any cwd.
-Recreate a link with `ln -s <abs>/Production/.claude/skills/<name> ~/.claude/skills/<name>`.
+Recreate a link with `ln -s <abs>/app/.claude/skills/<name> ~/.claude/skills/<name>`.
 
 ## Architecture
 
 `prayer_sheet.py` is the tkinter GUI entry point. All core logic lives in `lib/`:
 
 ```
-Production/
+app/
 ├── prayer_sheet.py      # GUI only — App class, load_env, parse_date, md_path, pdf_path, _apply_dirs
 ├── lib/
 │   ├── config.py        # Two-folder config (~/.config/mtps/config.json)

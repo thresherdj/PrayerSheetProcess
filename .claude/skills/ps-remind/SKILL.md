@@ -15,7 +15,7 @@ Never send. The human send is the right checkpoint for mail to real people.
 
 ## Paths
 
-- Store CLI: `python3 /home/dennis/MakerSpace/CodingProjects/MissionaryPrayerSheet/Production/lib/store.py`
+- Store CLI: `python3 /home/dennis/MakerSpace/CodingProjects/MissionaryPrayerSheet/app/lib/store.py`
 - Ministry + encourager data: `<app_dir>/ministries.json`
 - Voice profile: `/home/dennis/Claude/3_Dennis/Branding/Brand Context/voice-profile.md`
 

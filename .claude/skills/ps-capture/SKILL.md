@@ -10,7 +10,7 @@ lands as `pending` and waits for Dennis in `/ps-review`.
 
 ## Paths
 
-- App dir: `/home/dennis/MakerSpace/CodingProjects/MissionaryPrayerSheet/Production`
+- App dir: `/home/dennis/MakerSpace/CodingProjects/MissionaryPrayerSheet/app`
 - Store CLI: `python3 <app_dir>/lib/store.py` (subcommands: add, list, set,
   mark-seen, check-seen, expire, status, harvest)
 - Ministry data: `<app_dir>/ministries.json` — keys, molds, shapes,
