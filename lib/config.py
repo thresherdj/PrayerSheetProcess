@@ -17,7 +17,7 @@ CONFIG_DIR = Path.home() / ".config" / "mtps"
 CONFIG_FILE = CONFIG_DIR / "config.json"
 
 DEFAULTS = {
-    "work_dir": str(Path.home() / "Claude/2_Church/Missions/MonthlyPrayerSheet"),
+    "work_dir": str(Path.home() / "Documents/PGCC/Missions/MonthlyPrayerSheet/current"),
     "archive_dir": str(Path.home() / "Documents/PGCC/Missions/MonthlyPrayerSheet/archive"),
 }
 

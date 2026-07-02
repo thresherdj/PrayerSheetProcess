@@ -116,7 +116,13 @@ value.
    keeps/drops/edits in the chat, keepers written to JSON. **Decided
    2026-06-12: capture and review are decoupled** — capture runs daily and
    accumulates a pending queue; review is unscheduled, on Dennis's own time,
-   at least weekly.
+   at least weekly. **Capture scope narrowed 2026-06-26 to inbox-only**
+   (`in:inbox newer_than:35d`, one search instead of three): Dennis keeps
+   the inbox to the current cycle's live mail and files the rest, so capture
+   sees almost no noise and now also catches submissions from senders not in
+   known_senders. The deal: a submission filed/archived *before* a capture
+   run won't be seen, so leave submissions in the inbox until capture has
+   passed over them.
 5. **JSON schema** — the contract between capture and assembly: ministry key,
    ≤3-sentence summary, source/sender, date received, target month, status
    (`pending`/`selected`/`used`/`archived`), and a **`display` flag**
@@ -155,11 +161,18 @@ sheet assembles 2026-07-04 for first-Sunday 2026-07-05).
   `~/Claude/3_Dennis/Branding/Brand Context/voice-profile.md`.
 - **Session 2 — state + edge cases.** Much landed early in Session 1
   (seen-IDs dedup, attachment detect-and-nudge, non-submission skipping,
-  next-month tagging are all in the store/skills). Remaining: exercise
-  `/ps-review` end-to-end with Dennis, harden anything the first real review
-  exposes, and decide handling for org mail that only reaches protonmail
-  (Dennis must forward it to dd86.coin for capture to see it — e.g. LSI
-  Prayer Alerts and Life Source lists were hand-exported .emls in June).
+  next-month tagging are all in the store/skills). **2026-06-26: ran
+  `/ps-capture` and `/ps-review` end-to-end live** — queue was empty (July
+  reminders had just gone out), but the flow validated: status header +
+  empty-queue handling work, and capture correctly classified five inbox
+  non-submissions (bulletin-board, elder-board, a study forward) as noise
+  and marked them seen, the exact failure mode the old pipeline got wrong.
+  Capture also switched to inbox-only this session (see seam #1). Remaining:
+  exercise `/ps-review` against *real* pending items once July replies land,
+  harden anything that exposes, and decide handling for org mail that only
+  reaches protonmail (Dennis must forward it to dd86.coin for capture to see
+  it — e.g. LSI Prayer Alerts and Life Source lists were hand-exported .emls
+  in June).
 - **Session 3 — the trigger (time-boxed).** Try the daily scheduled run
   (seam #3, the only unproven piece). If a scheduled agent can't reach the
   Gmail connection, accept manual `/capture` as v1 without grief.
@@ -171,7 +184,13 @@ per encourager; dry-run-then-create; Claude drafts, Dennis sends. Content is
 personal touches are Dennis's to add). Resolved the encourager map:
 **Sarah Rose → Life Source** (not officially MT, but on the sheet). Added
 `store.py schedule` (target month + assembly day + submission deadline).
-Dry-run approved; will run for real ~last Saturday of June.
+**Ran for real 2026-06-26 for the July cycle:** five per-encourager drafts
+created (Roy/Dewing, David/Living Stones, Katie/Fort Wilderness,
+Kathy/OCC, Sarah/Life Source), subject-tagged with the Fri July 3
+submission deadline; Dennis reviewed and sent them. ROCK and WILD are
+Dennis-covered, so no drafts there. Subject line evolved from the old
+single "Mission Team Prayer Sheet Reminder" to per-ministry tags
+("Prayer Sheet — <ministry> …") so replies are self-identifying at capture.
 
 ### Phase 3 — Assembly app (JSON → dated .md) — ✅ DONE 2026-06-12
 Built `lib/assemble.py` (`run_assemble(code, log, work_dir)`, also a CLI):

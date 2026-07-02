@@ -22,18 +22,19 @@ lands as `pending` and waits for Dennis in `/ps-review`.
 
 **1. Load context.** Read `ministries.json` and the voice profile.
 
-**2. Find candidate mail.** Run these Gmail searches (35-day window covers a
-full cycle; `label:` takes the label *name*, never the ID):
+**2. Find candidate mail.** Scan the **inbox only** — Dennis keeps the inbox
+to the current cycle's live mail and files everything else, so a single
+search catches every submission with almost no noise (decided 2026-06-26):
 
-- `subject:"Mission Team Prayer Sheet Reminder" newer_than:35d` — replies
-  thread onto Dennis's own reminder; this one search gets most submissions
-- `from:(<every team + known_senders + forward address from ministries.json, OR-joined>) newer_than:35d`
-- `label:pgcc-missions newer_than:35d`
+- `in:inbox newer_than:35d`
 
 Collect unique messages with their message id, sender, date, subject.
 **Skip messages Dennis himself sent** (sender in `self_addresses`, or
 labelIds containing SENT) — his forwards arrive from the
-`forward_addresses` instead and ARE candidates.
+`forward_addresses` instead and ARE candidates. Because the scan is
+inbox-only, a submission archived or filed *before* a capture run won't be
+seen — that's the deal: leave submissions in the inbox until capture has
+passed over them.
 
 **3. Dedup.** `store.py check-seen <id> <id> ...` prints only the ids not
 yet processed. If nothing is new, report that and stop.

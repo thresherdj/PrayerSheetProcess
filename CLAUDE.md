@@ -32,7 +32,7 @@ launched from, and editable in-app via the **Folders → Change…** pickers:
 
 - **`work_dir`** — the active workbench. Holds `input/`, `QR_Codes/`, and the
   draft `{YYYYMM}_ssPrayerTime.md`/`.pdf` while the sheet is built.
-  Currently `~/Claude/2_Church/Missions/MonthlyPrayerSheet/`.
+  Currently `~/Documents/PGCC/Missions/MonthlyPrayerSheet/current/`.
 - **`archive_dir`** — the permanent record; finished zips land here.
   Currently `~/Documents/PGCC/Missions/MonthlyPrayerSheet/archive/`.
 
@@ -50,6 +50,21 @@ renders in `work_dir`). So `_do_open_rapumamd` copies `APP_DIR/macros.py` →
 syncs it. Do not rely on the global copy — it is a stale snapshot and missing
 newer macros (e.g. `@title_section`). Built-ins (`@hrule`, `@today`,
 `@framedbox`) come from rapumamd itself and need no local definition.
+
+## Skills (capture-and-curate workflow)
+
+Three project skills under `Production/.claude/skills/` drive the monthly cycle:
+`ps-remind` (draft per-encourager reminder emails), `ps-capture` (scan inbox →
+distill → hold as `pending`), and `ps-review` (human keep/drop/edit → `selected`).
+See `ROADMAP.md` for how they fit the redesign.
+
+They are exposed **globally** via symlinks from `~/.claude/skills/<name>` → the
+project copies, so `/ps-capture`, `/ps-review`, and `/ps-remind` work from any
+Claude Code session regardless of launch directory (new sessions only — skills
+load at startup). **The project copies are the source of truth** — edit
+`Production/.claude/skills/<name>/SKILL.md` and the symlink reflects it with no
+re-sync. The skills use absolute paths, so they run correctly from any cwd.
+Recreate a link with `ln -s <abs>/Production/.claude/skills/<name> ~/.claude/skills/<name>`.
 
 ## Architecture
 
